@@ -157,6 +157,11 @@ If you're migrating from the official caelestia shell to this fork, you may need
 }
 ```
 
+The bundled Google Sans Flex copy is renamed to `CaelestiaSans` so that a system-wide
+install of the original font can never clash with it in Qt. If `shell.json` explicitly
+pins `"family": "GoogleSansFlex"` under `appearance.font`, change it to `CaelestiaSans`
+(or `""` to inherit the default).
+
 ## Usage
 
 ### Shortcuts/IPC
@@ -282,7 +287,7 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
             "activeWindow": "",
             "barClock": "",
             "body": {
-                "family": "GoogleSansFlex",
+                "family": "CaelestiaSans",
                 "large": {
                     "family": "",
                     "italic": false,
@@ -313,7 +318,7 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
             },
             "clock": "Rubik",
             "headline": {
-                "family": "GoogleSansFlex",
+                "family": "CaelestiaSans",
                 "large": {
                     "family": "",
                     "italic": false,
@@ -374,7 +379,7 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
                 }
             },
             "label": {
-                "family": "GoogleSansFlex",
+                "family": "CaelestiaSans",
                 "large": {
                     "family": "",
                     "italic": false,
@@ -429,7 +434,7 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
             },
             "scale": 1,
             "title": {
-                "family": "GoogleSansFlex",
+                "family": "CaelestiaSans",
                 "large": {
                     "family": "",
                     "italic": false,
