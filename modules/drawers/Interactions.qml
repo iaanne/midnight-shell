@@ -38,10 +38,10 @@ CustomMouseArea {
         return false;
     }
 
-    function withinPanelHeight(panel: Item, x: real, y: real): bool {
+    function withinPanelHeight(panel: Item, x: real, y: real, pad = Config.border.rounding): bool {
         const panelY = panels.topMargin + panel.y;
         const panelHeight = panel.content ? panel.content.nonAnimHeight : panel.height;
-        return y >= panelY - Config.border.rounding && y <= panelY + panelHeight + Config.border.rounding;
+        return y >= panelY - pad && y <= panelY + panelHeight + pad;
     }
 
     function withinPanelWidth(panel: Item, x: real, y: real): bool {
@@ -50,18 +50,18 @@ CustomMouseArea {
         return x >= panelX - Config.border.rounding && x <= panelX + panelWidth + Config.border.rounding;
     }
 
-    function inLeftPanel(panel: Item, x: real, y: real): bool {
+    function inLeftPanel(panel: Item, x: real, y: real, pad = Config.border.rounding): bool {
         const panelWidth = panel.content ? panel.content.nonAnimWidth : panel.width;
         const panelHeight = panel.content ? panel.content.nonAnimHeight : panel.height;
 
         if (Config.bar.position === "left")
-            return x < panels.leftMargin + panel.x + panelWidth && withinPanelHeight(panel, x, y);
+            return x < panels.leftMargin + panel.x + panelWidth && withinPanelHeight(panel, x, y, pad);
         if (Config.bar.position === "right")
-            return x > screen.width - panels.rightMargin - panelWidth && withinPanelHeight(panel, x, y);
+            return x > screen.width - panels.rightMargin - panelWidth && withinPanelHeight(panel, x, y, pad);
         if (Config.bar.position === "top")
-            return y < panels.topMargin + panel.y + panelHeight && withinPanelWidth(panel, x, y);
+            return y < panels.topMargin + panel.y + panelHeight + pad && withinPanelWidth(panel, x, y);
         if (Config.bar.position === "bottom")
-            return y > screen.height - panels.bottomMargin - panelHeight && withinPanelWidth(panel, x, y);
+            return y > screen.height - panels.bottomMargin - panelHeight - pad && withinPanelWidth(panel, x, y);
         return false;
     }
 
@@ -283,7 +283,8 @@ CustomMouseArea {
         // Show popouts on hover
         if (inBarArea(x, y)) {
             bar.checkPopout(isBarHorizontal ? x : y);
-        } else if ((!popouts.currentName.startsWith("traymenu") || ((popouts.current as StackView)?.depth ?? 0) <= 1) && !inLeftPanel(panels.popoutsWrapper, x, y)) {
+        } else if ((!popouts.currentName.startsWith("traymenu") || ((popouts.current as StackView)?.depth ?? 0) <= 1)
+                   && !inLeftPanel(panels.popoutsWrapper, x, y, panels.popoutGrabPad)) {
             popouts.hasCurrent = false;
             bar.closeTray();
         }

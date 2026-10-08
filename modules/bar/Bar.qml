@@ -92,6 +92,11 @@ Item {
                 popouts.hasCurrent = false;
             }
         } else if (id === "tray" && Config.bar.popouts.tray && !screenState.sidebar) {
+            // Keep the open tray menu for as long as the pointer stays within the
+            // tray block - crossings over neighbouring icons must never retarget it.
+            if (popouts.hasCurrent && popouts.currentName.startsWith("traymenu"))
+                return;
+
             const tray = ch.item as Tray;
             const mouseMap = mapToItem(tray.expandIcon, isHorizontal ? pos : tray.implicitWidth / 2, isHorizontal ? tray.implicitHeight / 2 : pos);
             if (!Config.bar.tray.compact || (tray.expanded && !tray.expandIcon.contains(mouseMap))) {

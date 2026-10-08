@@ -40,6 +40,7 @@ Item {
     readonly property real rightMargin: anchors.rightMargin
     readonly property real topMargin: anchors.topMargin
     readonly property real bottomMargin: anchors.bottomMargin
+    readonly property real popoutGrabPad: Tokens.padding.extraExtraLarge
 
     anchors.fill: parent
     anchors.leftMargin: (Config.bar.position === "left" ? bar.implicitWidth + (GlobalConfig.appearance.islands ? Tokens.spacing.extraLarge * 2 : 0) : borderThickness + (GlobalConfig.appearance.islands ? Tokens.spacing.extraLarge : 0))

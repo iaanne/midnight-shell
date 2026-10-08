@@ -86,6 +86,8 @@ Region {
     R {
         panel: root.panels.popoutsWrapper
         width: panel.width * (1 - root.panels.popoutsWrapper.offsetScale)
+        y: panel.y + root.panels.topMargin - root.panels.popoutGrabPad * (1 - root.panels.popoutsWrapper.offsetScale)
+        height: panel.height + root.panels.popoutGrabPad * 2 * (1 - root.panels.popoutsWrapper.offsetScale)
     }
 
     component R: Region {
