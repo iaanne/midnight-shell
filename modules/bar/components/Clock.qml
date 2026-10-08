@@ -12,7 +12,8 @@ StyledRect {
 
     readonly property color colour: Colours.palette.m3tertiary
     readonly property int padding: Config.bar.clock.background ? Tokens.padding.medium : Tokens.padding.extraSmall
-    readonly property var font: Tokens.font.body.builders.small.scale(1.1)
+    readonly property var font: root.withFamily(Tokens.font.body.builders.small).scale(1.1)
+    readonly property string fontFamily: Config.appearance.font.barClock
 
     function fontFor(text: string, metricWidth: int): font {
         // We don't count seconds for the max width because it changes too often.
@@ -22,6 +23,10 @@ StyledRect {
         const minW = minMetrics?.width ?? metricWidth;
         const scale = text === "11" ? 1.15 : Math.min(1.05, Math.max(hourW, minW) / metricWidth);
         return root.font.width(scale * 100).letterSpacing(scale).build();
+    }
+
+    function withFamily(builder: var): var {
+        return root.fontFamily ? builder.family(root.fontFamily) : builder;
     }
 
     readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
@@ -54,7 +59,7 @@ StyledRect {
             Layout.alignment: Qt.AlignVCenter
             visible: Config.bar.clock.showDate
             text: Time.format("ddd")
-            font: Tokens.font.body.small
+            font: root.withFamily(Tokens.font.body.builders.small).build()
             color: root.colour
         }
 
@@ -62,7 +67,7 @@ StyledRect {
             Layout.alignment: Qt.AlignVCenter
             visible: Config.bar.clock.showDate
             text: Time.format("d")
-            font: Tokens.font.body.small
+            font: root.withFamily(Tokens.font.body.builders.small).build()
             color: root.colour
         }
 
@@ -113,7 +118,7 @@ StyledRect {
 
             sourceComponent: StyledText {
                 text: Time.amPmStr.toLowerCase()
-                font: Tokens.font.body.builders.small.scale(0.9).build()
+                font: root.withFamily(Tokens.font.body.builders.small).scale(0.9).build()
                 color: root.colour
             }
         }
@@ -150,7 +155,7 @@ StyledRect {
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
                     text: Time.format("ddd")
-                    font: Tokens.font.body.builders.small.scale(0.9).build()
+                    font: root.withFamily(Tokens.font.body.builders.small).scale(0.9).build()
                     color: root.colour
                 }
 
@@ -232,7 +237,7 @@ StyledRect {
 
             sourceComponent: StyledText {
                 text: Time.amPmStr.toLowerCase()
-                font: Tokens.font.body.builders.small.scale(0.9).build()
+                font: root.withFamily(Tokens.font.body.builders.small).scale(0.9).build()
                 color: root.colour
             }
         }

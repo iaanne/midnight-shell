@@ -14,6 +14,8 @@ Item {
     required property Brightness.Monitor monitor
     property color colour: Colours.palette.m3primary
 
+    readonly property string fontFamily: Config.appearance.font.activeWindow
+
     readonly property string windowTitle: {
         const title = Niri.focusedWindowTitle;
         if (!title)
@@ -43,6 +45,10 @@ Item {
         }
     }
     property Title current: text1
+
+    function withFamily(builder: var): var {
+        return root.fontFamily ? builder.family(root.fontFamily) : builder;
+    }
 
     clip: true
     implicitWidth: bar.isHorizontal ? (icon.implicitWidth + current.width + current.anchors.leftMargin) : Math.max(icon.implicitWidth, current.width)
@@ -96,7 +102,7 @@ Item {
         id: metrics
 
         text: root.windowTitle
-        font: root.Tokens.font.body.builders.small.letterSpacing(1.4).build()
+        font: root.withFamily(root.Tokens.font.body.builders.small).letterSpacing(1.4).build()
         elide: Qt.ElideRight
         elideWidth: root.maxSize - icon.width
 

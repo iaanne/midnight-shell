@@ -217,6 +217,9 @@ class AppearanceFont : public settings::ObjectNode {
     CONFIG_PROPERTY(QString, clock, u"Rubik"_s)
     // Google Sans Flex doesn't play well with unicode symbols apparently, so use Rubik instead
     CONFIG_PROPERTY(QString, workspaces, u"Rubik"_s)
+    // Empty uses the default body font
+    CONFIG_PROPERTY(QString, barClock, {})
+    CONFIG_PROPERTY(QString, activeWindow, {})
 };
 
 class AnimDurations : public settings::ObjectNode {

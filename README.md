@@ -279,6 +279,8 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
         },
         "deformScale": 1,
         "font": {
+            "activeWindow": "",
+            "barClock": "",
             "body": {
                 "family": "GoogleSansFlex",
                 "large": {
