@@ -92,38 +92,6 @@ Item {
         return (lines[i] ?? "").replace(/\u00A0/g, " ");
     }
 
-    function slotY(s) {
-        repeater.count; // Re-evaluate once delegates finish building
-        const c = centerSlot;
-        const sp = lyricSpacing;
-        const center = repeater.itemAt(c);
-        let y = (lyricsContainer.height - (center ? center.height : 0)) / 2;
-        if (s > c) {
-            for (let k = c; k < s; k++) {
-                const it = repeater.itemAt(k);
-                if (it && it.visible)
-                    y += it.height + sp;
-            }
-        } else {
-            for (let k = c - 1; k >= s; k--) {
-                const it = repeater.itemAt(k);
-                if (it && it.visible)
-                    y -= it.height + sp;
-            }
-        }
-        return y;
-    }
-
-    function slideFromY(s, dir) {
-        const last = slotCount - 1;
-        const it = repeater.itemAt(s);
-        if (dir > 0 && s === last)
-            return slotY(s) + (it && it.visible ? it.height + lyricSpacing : 0);
-        if (dir < 0 && s === 0)
-            return slotY(s) - (it && it.visible ? it.height + lyricSpacing : 0);
-        return slotY(s + dir);
-    }
-
     onCurrentLyricIndexChanged: {
         slideDir = currentLyricIndex > lastSlideIndex ? 1 : -1;
         lastSlideIndex = currentLyricIndex;
@@ -344,85 +312,95 @@ Item {
                 }
             }
 
-            Repeater {
-                id: repeater
+            Column {
+                id: lyricsColumn
 
-                model: root.slotCount
+                anchors.centerIn: parent
+                spacing: root.lyricSpacing
 
-                delegate: Item {
-                    id: slot
+                Repeater {
+                    model: root.slotCount
 
-                    required property int index
+                    delegate: Item {
+                        id: slot
 
-                    readonly property int distance: index - root.centerSlot
-                    readonly property bool isCenter: distance === 0
-                    readonly property string line: root.lineText(distance)
-                    readonly property real bigPointSize: Tokens.font.title.medium.pointSize * 1.3 * root.lyricsScale
-                    readonly property real smallPointSize: Tokens.font.body.medium.pointSize * root.lyricsScale
+                        required property int index
 
-                    width: parent.width
-                    height: label.implicitHeight
-                    y: root.slotY(index)
-                    visible: root.isCurrentActive && line !== ""
+                        readonly property int distance: index - root.centerSlot
+                        readonly property bool isCenter: distance === 0
+                        readonly property string line: root.lineText(distance)
+                        readonly property real bigPointSize: Tokens.font.title.medium.pointSize * 1.3 * root.lyricsScale
+                        readonly property real smallPointSize: Tokens.font.body.medium.pointSize * root.lyricsScale
 
-                    Connections {
-                        function onCurrentLyricIndexChanged() {
-                            if (root.isCurrentActive)
-                                slide.restart();
+                        width: lyricsContainer.width
+                        height: label.implicitHeight
+                        visible: root.isCurrentActive && line !== ""
+
+                        transform: Translate {
+                            id: slideOffset
+
+                            y: 0
                         }
 
-                        target: root
-                    }
+                        Connections {
+                            function onCurrentLyricIndexChanged() {
+                                if (root.isCurrentActive)
+                                    slide.restart();
+                            }
 
-                    SequentialAnimation {
-                        id: slide
-
-                        PropertyAction {
-                            target: slot
-                            property: "y"
-                            value: root.slideFromY(slot.index, root.slideDir)
+                            target: root
                         }
 
-                        NumberAnimation {
-                            target: slot
-                            property: "y"
-                            to: root.slotY(slot.index)
-                            duration: Tokens.anim.durations.expressiveDefaultEffects
-                            easing.type: Easing.OutCubic
+                        SequentialAnimation {
+                            id: slide
+
+                            PropertyAction {
+                                target: slideOffset
+                                property: "y"
+                                value: (root.slideDir > 0 ? 1 : -1) * (slot.height + root.lyricSpacing)
+                            }
+
+                            NumberAnimation {
+                                target: slideOffset
+                                property: "y"
+                                to: 0
+                                duration: Tokens.anim.durations.expressiveDefaultEffects
+                                easing.type: Easing.OutCubic
+                            }
                         }
-                    }
 
-                    MultiEffect {
-                        anchors.fill: label
-                        source: label
-                        scale: label.scale
-                        enabled: slot.isCenter && root.isCurrentActive
+                        MultiEffect {
+                            anchors.fill: label
+                            source: label
+                            scale: label.scale
+                            enabled: slot.isCenter && root.isCurrentActive
 
-                        blurEnabled: true
-                        blur: 0.4
+                            blurEnabled: true
+                            blur: 0.4
 
-                        shadowEnabled: true
-                        shadowColor: Colours.palette.m3primary
-                        shadowOpacity: 0.5
-                        shadowBlur: 0.6
-                        shadowHorizontalOffset: 0
-                        shadowVerticalOffset: 0
+                            shadowEnabled: true
+                            shadowColor: Colours.palette.m3primary
+                            shadowOpacity: 0.5
+                            shadowBlur: 0.6
+                            shadowHorizontalOffset: 0
+                            shadowVerticalOffset: 0
 
-                        autoPaddingEnabled: true
-                    }
+                            autoPaddingEnabled: true
+                        }
 
-                    StyledText {
-                        id: label
+                        StyledText {
+                            id: label
 
-                        anchors.fill: parent
-                        text: slot.line
-                        font.family: root.sansFont
-                        font.pointSize: slot.isCenter ? slot.bigPointSize : slot.smallPointSize
-                        font.weight: slot.isCenter ? Font.Bold : Tokens.font.body.small.weight
-                        color: slot.isCenter ? Colours.palette.m3primary : root.safeSecondary
-                        opacity: slot.isCenter ? 1 : Math.max(0.3, 0.6 - (Math.abs(slot.distance) - 1) * 0.15)
-                        wrapMode: Text.WordWrap
-                        horizontalAlignment: root.textAlignment
+                            anchors.fill: parent
+                            text: slot.line
+                            font.family: root.sansFont
+                            font.pointSize: slot.isCenter ? slot.bigPointSize : slot.smallPointSize
+                            font.weight: slot.isCenter ? Font.Bold : Tokens.font.body.small.weight
+                            color: slot.isCenter ? Colours.palette.m3primary : root.safeSecondary
+                            opacity: slot.isCenter ? 1 : Math.max(0.3, 0.6 - (Math.abs(slot.distance) - 1) * 0.15)
+                            wrapMode: Text.WordWrap
+                            horizontalAlignment: root.textAlignment
+                        }
                     }
                 }
             }
