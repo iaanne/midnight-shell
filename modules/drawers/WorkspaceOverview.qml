@@ -208,10 +208,10 @@ Item {
                                 Behavior on rawLogicalW { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                                 Behavior on rawLogicalH { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                                 
-                                x: ((rawLogicalX - wsDelegate.effectiveMinX) / wsDelegate.effectiveMw * parent.width)
-                                y: ((rawLogicalY - wsDelegate.effectiveMinY) / wsDelegate.effectiveMh * parent.height)
-                                width: (rawLogicalW / wsDelegate.effectiveMw * parent.width)
-                                height: (rawLogicalH / wsDelegate.effectiveMh * parent.height)
+                                x: wsDelegate ? ((rawLogicalX - wsDelegate.effectiveMinX) / wsDelegate.effectiveMw * parent.width) : 0
+                                y: wsDelegate ? ((rawLogicalY - wsDelegate.effectiveMinY) / wsDelegate.effectiveMh * parent.height) : 0
+                                width: wsDelegate ? (rawLogicalW / wsDelegate.effectiveMw * parent.width) : 0
+                                height: wsDelegate ? (rawLogicalH / wsDelegate.effectiveMh * parent.height) : 0
 
                                 Item {
                                     id: windowVisualProxy
@@ -227,7 +227,6 @@ Item {
                                     Drag.keys: ["window"]
                                     Drag.hotSpot.x: width / 2
                                     Drag.hotSpot.y: height / 2
-                                    Drag.source: windowContainer.modelData
 
                                     StyledRect {
                                         id: windowBg

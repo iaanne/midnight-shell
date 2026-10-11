@@ -599,6 +599,7 @@ void NiriBackend::handleWindowOpenedOrChanged(const QJsonObject& data) {
         m_focusedWindowIndex = findWindowIndexById(winId);
     }
 
+    updateWorkspaceOccupancy();
     updateFocusedWindowFields();
     emit windowsChanged();
     emit windowOpenedOrChanged(window);
@@ -614,6 +615,7 @@ void NiriBackend::handleWindowClosed(const QJsonObject& data) {
         rebuildWindowIndex();
     }
 
+    updateWorkspaceOccupancy();
     updateFocusedWindowFields();
     emit windowsChanged();
     emit windowClosed(closedIdStr);
