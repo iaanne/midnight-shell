@@ -193,7 +193,7 @@ Item {
                     running: root.opacity > 0 && !bars.settled
                     onTriggered: {
                         bars.advance(frameTime);
-                        if (!root.rendererGpu) {
+                        if (root.rendererGpu) {
                             dataCanvas.requestPaint();
                         }
                     }
