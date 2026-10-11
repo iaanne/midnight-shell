@@ -69,7 +69,7 @@ Item {
     }
 
     Connections {
-        target: Niri
+        target: Compositor
         ignoreUnknownSignals: true
         function onWindowsChanged() { root.updatePresence(); }
     }
@@ -121,8 +121,8 @@ Item {
         let topTargetClass = "";
         let topTargetTitle = "";
 
-        for (const toplevel of Niri.windows) {
-            let winClass = toplevel.app_id ?? "";
+        for (const toplevel of Compositor.windows) {
+            let winClass = toplevel.appId ?? "";
             let winTitle = toplevel.title ?? "";
 
             if (GlobalConfig.services.arpcSteamAutoDetect && winClass.startsWith("steam_app_")) {

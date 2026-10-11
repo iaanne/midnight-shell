@@ -114,7 +114,7 @@ Item {
                 popouts.hasCurrent = false;
                 tray.expanded = true;
             }
-        } else if (id === "activeWindow" && Config.bar.popouts.activeWindow && Config.bar.activeWindow.showOnHover && Niri.focusedWindow) {
+        } else if (id === "activeWindow" && Config.bar.popouts.activeWindow && Config.bar.activeWindow.showOnHover && Compositor.focusedWindow) {
             const item = ch.item as Item;
             if (item) {
                 const relPos = pos - top;
@@ -180,9 +180,9 @@ Item {
             // Workspace scroll
             // TODO: Niri has no special workspaces — skip special workspace check
             if (angleDelta.y < 0)
-                Niri.switchToWorkspaceUpDown("down");
+                Compositor.switchToWorkspaceUpDown("down");
             else if (angleDelta.y > 0)
-                Niri.switchToWorkspaceUpDown("up");
+                Compositor.switchToWorkspaceUpDown("up");
         } else if ((isHorizontal ? pos < screen.width / 2 : pos < screen.height / 2) && Config.bar.scrollActions.volume) {
             // Volume scroll on top half
             if (angleDelta.y > 0)

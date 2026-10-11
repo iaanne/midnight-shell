@@ -34,13 +34,13 @@ Item {
         };
 
         if (GlobalConfig.background.videoWallpaperPauseOnAllDisplays) {
-            return checkToplevels(Niri.windows);
+            return checkToplevels(Compositor.windows);
         }
 
         if (!root.screen)
             return false;
 
-        return checkToplevels(Niri.windows.filter(t => t.output === root.screen.name));
+        return checkToplevels(Compositor.windows.filter(t => t.output === root.screen.name));
     }
 
     onShouldPauseChanged: applyPauseState()

@@ -148,7 +148,7 @@ ColumnLayout {
 
         onClicked: {
             for (const toplevel of model.toplevels) {
-                Niri.closeWindow(toplevel.id);
+                Compositor.closeWindow(toplevel.id);
             }
             root.popouts.hasCurrent = false;
         }

@@ -22,11 +22,11 @@ StyledWindow {
 
     readonly property ScreenState screenState: ShellState.forScreen(screen)
 
-    // TODO: Niri has no special workspaces
+    // TODO: no special workspaces in neutral schema
     readonly property bool hasSpecialWorkspace: false
     readonly property bool hasFullscreenOnNormalWs: {
-        const wins = Niri.getActiveWorkspaceWindows();
-        return wins ? wins.some(t => t.is_fullscreen) : false;
+        const wins = Compositor.getActiveWorkspaceWindows();
+        return wins ? wins.some(t => t.fullscreen) : false;
     }
     readonly property bool hasFullscreen: hasFullscreenOnNormalWs
 
@@ -68,7 +68,7 @@ StyledWindow {
             return 0;
 
         // TODO: Niri has no special workspace or window count check
-        const wins = Niri.getActiveWorkspaceWindows();
+        const wins = Compositor.getActiveWorkspaceWindows();
         if (wins && wins.length > 0)
             return 0;
 

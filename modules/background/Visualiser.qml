@@ -24,7 +24,7 @@ Item {
         if (filter === AppFilter.Blacklist) return !Players.list.some(p => Players.playerMatchesApps(filteredApps, p));
         return true;
     }
-    readonly property bool shouldBeActive: Config.background.visualiser.enabled && appFilterActive && !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableVisualizer) && (!Config.background.visualiser.autoHide || (Niri.windows.filter(t => t.output === screen.name).every(t => t.floating) ?? true))
+    readonly property bool shouldBeActive: Config.background.visualiser.enabled && appFilterActive && !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableVisualizer) && (!Config.background.visualiser.autoHide || (Compositor.windows.filter(t => t.output === screen.name).every(t => t.floating) ?? true))
     property real offset: shouldBeActive ? 0 : screen.height * 0.2
 
     readonly property int barExclusiveZone: Visibilities.bars.get(root.screen.name)?.exclusiveZone ?? (Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness))

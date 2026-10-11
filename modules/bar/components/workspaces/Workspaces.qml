@@ -14,19 +14,23 @@ StyledClippingRect {
     required property ShellScreen screen
     required property bool fullscreen
 
-    // TODO: Niri has no special workspaces — always false
+    // TODO: no special workspaces in neutral schema — always false
     readonly property bool onSpecial: false
-    readonly property int activeWsId: Niri.focusedWorkspaceId ?? 1
+
+    readonly property var outputWorkspaces: Compositor.allWorkspaces.filter(w => w.output === root.screen.name)
+    readonly property int activeWsIndex: {
+        const focused = outputWorkspaces.find(w => w.focused);
+        return focused ? focused.index : 1;
+    }
 
     readonly property var occupied: {
         const occ = {};
-        for (const ws of Niri.allWorkspaces) {
-            const wins = Niri.getWindowsByWorkspaceId(ws.id);
-            occ[ws.id] = wins ? wins.length > 0 : false;
+        for (const ws of outputWorkspaces) {
+            occ[ws.index] = ws.occupied ?? false;
         }
         return occ;
     }
-    readonly property int groupOffset: Math.floor((activeWsId - 1) / Config.bar.workspaces.shown) * Config.bar.workspaces.shown
+    readonly property int groupOffset: Math.floor((activeWsIndex - 1) / Config.bar.workspaces.shown) * Config.bar.workspaces.shown
 
     property real blur: onSpecial ? 1 : 0
 
@@ -81,9 +85,10 @@ StyledClippingRect {
                 model: Config.bar.workspaces.shown
 
                 Workspace {
-                    activeWsId: root.activeWsId
+                    activeWsId: root.activeWsIndex
                     occupied: root.occupied
                     groupOffset: root.groupOffset
+                    outputWorkspaces: root.outputWorkspaces
                 }
             }
         }
@@ -95,7 +100,7 @@ StyledClippingRect {
             active: Config.bar.workspaces.activeIndicator
 
             sourceComponent: ActiveIndicator {
-                activeWsId: root.activeWsId
+                activeWsId: root.activeWsIndex
                 workspaces: workspaces
                 mask: layout
                 fullscreen: root.fullscreen
@@ -108,9 +113,9 @@ StyledClippingRect {
                 const ws = (layout.childAt(event.x, event.y) as Workspace)?.ws;
                 if (!ws)
                     return;
-                if (Niri.focusedWorkspaceId !== ws)
-                    Niri.switchToWorkspaceByNumber(ws);
-                // TODO: Niri has no special workspace toggle
+                if (root.activeWsIndex !== ws)
+                    Compositor.switchToWorkspaceByNumber(ws, root.screen.name);
+                // TODO: no special workspace toggle in neutral schema
             }
         }
 
@@ -125,7 +130,7 @@ StyledClippingRect {
         }
     }
 
-    // TODO: Niri has no special workspaces — loader commented out
+    // TODO: no special workspaces in neutral schema — loader commented out
     // Loader {
     //     id: specialWs
     //     ...

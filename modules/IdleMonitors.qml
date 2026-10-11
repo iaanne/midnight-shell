@@ -32,7 +32,7 @@ Scope {
         else if (action === "unlock")
             lock.lock.locked = false;
         else if (typeof action === "string")
-            Hypr.dispatch(action);
+            Compositor.dispatch(action);
         else if (!SessionManager.exec(action))
             Quickshell.execDetached(action);
     }

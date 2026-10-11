@@ -32,9 +32,14 @@ Item {
     readonly property bool autoHideFullscreen: Config.background.desktopLyrics.autoHideFullscreen
     readonly property bool autoHideTiled: Config.background.desktopLyrics.autoHideTiled
     
-    // TODO: Niri fullscreen/tiled detection (adapted from Hyprland)
-    readonly property bool hasFullscreen: false
-    readonly property bool hasTiled: false
+    readonly property bool hasFullscreen: {
+        const wins = Compositor.getActiveWorkspaceWindows();
+        return wins ? wins.some(t => t.fullscreen) : false;
+    }
+    readonly property bool hasTiled: {
+        const wins = Compositor.getActiveWorkspaceWindows();
+        return wins ? wins.some(t => !t.floating && !t.fullscreen) : false;
+    }
 
     readonly property bool shouldHide: (autoHideFullscreen && hasFullscreen) || (autoHideTiled && hasTiled)
     readonly property bool appFilterActive: Players.appFilterPasses(Config.background.desktopLyrics.appFilter, Config.background.desktopLyrics.filteredApps, Players.active)

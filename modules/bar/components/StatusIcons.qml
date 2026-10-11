@@ -37,7 +37,7 @@ StyledRect {
     // Entries that can shrink to nothing, spacing included
     function collapsed(entry: var): bool {
         if (entry.id === "lockStatus")
-            return !Niri.capsLock && !Niri.numLock;
+            return !Compositor.capsLock && !Compositor.numLock;
         return false;
     }
 
@@ -118,7 +118,7 @@ StyledRect {
                     delegate: EntryWrapper {
                         StyledText {
                             animate: true
-                            text: Niri.kbLayout
+                            text: Compositor.kbLayout
                             color: root.colour
                             font: Tokens.font.mono.medium
                         }

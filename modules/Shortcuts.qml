@@ -11,7 +11,7 @@ Scope {
     id: root
 
     property bool launcherInterrupted
-    readonly property bool hasFullscreen: Niri.windows.some(t => t.fullscreen) ?? false
+    readonly property bool hasFullscreen: Compositor.windows.some(t => t.fullscreen) ?? false
 
     // qmllint disable unresolved-type
     // CustomShortcut {

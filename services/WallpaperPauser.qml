@@ -89,13 +89,11 @@ Singleton {
             newPaused = true;
             reason = "Battery";
         } else if (pauseOnWindowOverlap) {
-            const monName = Niri.focusedMonitorName;
-            const wsIdx = Niri.focusedWorkspaceIndex;
-            const ws = Niri.allWorkspaces[wsIdx];
+            const focusedWs = Compositor.allWorkspaces.find(w => w.focused);
 
-            if (ws) {
+            if (focusedWs) {
                 // Strictly filter global toplevels to ONLY the focused workspace
-                const toplevels = Niri.windows.filter(t => t.workspace_id === ws.id);
+                const toplevels = Compositor.windows.filter(t => t.workspaceId === focusedWs.id);
 
                 // Rule #3 — 2+ visible windows
                 if (toplevels.length >= 2) {
@@ -103,17 +101,16 @@ Singleton {
                     reason = "2+ windows (" + toplevels.length + " total)";
                 } else {
                     // Rule #2 — 70% of monitor area
-                    if (monName) {
-                        const screen = Quickshell.screens.find(s => s.name === monName);
+                    if (focusedWs.output) {
+                        const screen = Quickshell.screens.find(s => s.name === focusedWs.output);
                         if (screen) {
                             const screenArea = screen.width * screen.height;
                             if (screenArea > 0) {
                                 const threshold = screenArea * 0.7;
                                 for (const t of toplevels) {
-                                    const size = t.layout?.window_size;
-                                    if (size && size.length >= 2 && size[0] * size[1] >= threshold) {
+                                    if (t.width * t.height >= threshold) {
                                         newPaused = true;
-                                        reason = "70% area rule by: " + (t.title ?? "Unknown") + " (" + size[0] + "x" + size[1] + ")";
+                                        reason = "70% area rule by: " + (t.title ?? "Unknown") + " (" + t.width + "x" + t.height + ")";
                                         break;
                                     }
                                 }
@@ -129,12 +126,14 @@ Singleton {
     }
 
     Connections {
-        target: Niri
-        function onActiveWorkspaceChanged() {
+        target: Compositor
+        function onFocusedWorkspaceIdChanged() {
             root.recalculate();
         }
-        // TODO: Niri monitor focus change signal
-        function onWindowsChanged() {
+        function onWindowOpenedOrChanged() {
+            recalcTimer.restart();
+        }
+        function onWindowClosed() {
             recalcTimer.restart();
         }
     }
@@ -152,7 +151,7 @@ Singleton {
         onTriggered: root.recalculate()
     }
 
-    // Startup timer to ensure we catch the asynchronously loaded Niri and Quickshell state
+    // Startup timer to ensure we catch the asynchronously loaded compositor and Quickshell state
     Timer {
         id: startupTimer
         interval: 1000

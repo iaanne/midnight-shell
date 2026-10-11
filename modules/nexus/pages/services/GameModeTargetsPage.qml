@@ -262,8 +262,8 @@ PageBase {
                         id: list
 
                         function updateModel() {
-                            list.model = Niri.windows
-                                .filter(t => t.app_id)
+                            list.model = Compositor.windows
+                                .filter(t => t.appId)
                                 .sort((a, b) => (a.title ?? "").localeCompare(b.title ?? ""));
                         }
 
@@ -284,7 +284,7 @@ PageBase {
 
                             onClicked: {
                                 row.popup.open = false;
-                                row.selected(modelData.app_id ?? "");
+                                row.selected(modelData.appId ?? "");
                             }
 
                             RowLayout {
@@ -297,7 +297,7 @@ PageBase {
                                 IconImage {
                                     asynchronous: true
                                     implicitSize: Math.round(Tokens.font.icon.large.pointSize * 1.8)
-                                    source: Quickshell.iconPath(windowItem.modelData.app_id ?? "", "image-missing")
+                                    source: Quickshell.iconPath(windowItem.modelData.appId ?? "", "image-missing")
                                 }
 
                                 ColumnLayout {
@@ -314,7 +314,7 @@ PageBase {
                                     StyledText {
                                         Layout.fillWidth: true
                                         visible: text !== ""
-                                        text: windowItem.modelData.app_id ?? ""
+                                        text: windowItem.modelData.appId ?? ""
                                         color: Colours.palette.m3outline
                                         font: Tokens.font.label.small
                                         elide: Text.ElideRight
@@ -328,7 +328,7 @@ PageBase {
                                 list.updateModel();
                             }
 
-                            target: Niri
+                            target: Compositor
                         }
                     }
                 }

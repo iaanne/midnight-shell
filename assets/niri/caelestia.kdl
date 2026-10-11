@@ -1,3 +1,4 @@
+// Optional extra — niri-only. Documented in README (Shell blur section).
 // Layer rules for midnight-shell Niri port
 // Static compositor rules — loaded at Niri startup
 

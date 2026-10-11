@@ -9,7 +9,7 @@ import qs.components.effects
 import qs.services
 import qs.utils
 
-// TODO: Niri has no concept of special/scratchpad workspaces.
+// TODO: no concept of special/scratchpad workspaces in neutral schema.
 // This component is commented out as a no-op placeholder.
 Item {
     id: root

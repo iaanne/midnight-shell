@@ -12,7 +12,9 @@ Singleton {
     signal gammaChangeAttempt()
 
     readonly property real gammaLowerLimit: 25
-    readonly property bool isNiri: (SysInfo.wm || "").toLowerCase().includes("niri")
+    // Hyprsunset/hyprctl are Hyprland-only; every other compositor uses the
+    // neutral wlsunset path (gamma-control protocol).
+    readonly property bool isHyprland: Compositor.kind === "hyprland"
 
     property string from: GlobalConfig.utilities.toasts.nightFrom ?? "19:00"
     property string to: GlobalConfig.utilities.toasts.nightTo ?? "06:30"
@@ -84,12 +86,12 @@ Singleton {
     }
 
     function startHyprsunset() {
-        if (root.isNiri) return;
+        if (!root.isHyprland) return;
         Quickshell.execDetached(["bash", "-c", `pidof hyprsunset || hyprsunset`]);
     }
 
     function load() {
-        if (root.isNiri) {
+        if (!root.isHyprland) {
             root.disableTemperature();
             return;
         }
@@ -98,20 +100,20 @@ Singleton {
     }
 
     function enableTemperature() {
-        if (root.isNiri) {
-            root.startNiriSunset(root.colorTemperature);
-        } else {
+        if (root.isHyprland) {
             root.startHyprsunset();
             Quickshell.execDetached(["bash", "-c", `hyprctl hyprsunset temperature ${root.colorTemperature}`]);
+        } else {
+            root.startWlsunset(root.colorTemperature);
         }
         root.temperatureActive = true;
     }
 
     function disableTemperature() {
-        if (root.isNiri) {
-            root.stopNiriSunset();
-        } else {
+        if (root.isHyprland) {
             Quickshell.execDetached(["hyprctl", "hyprsunset", "identity"]);
+        } else {
+            root.stopWlsunset();
         }
         root.temperatureActive = false;
     }
@@ -120,29 +122,29 @@ Singleton {
         root.gamma = Math.max(root.gammaLowerLimit, Math.min(100, gamma));
         root.gammaChangeAttempt();
 
-        if (root.isNiri) {
+        if (!root.isHyprland) {
             return;
         }
         root.startHyprsunset();
         Quickshell.execDetached(["bash", "-c", `hyprctl hyprsunset gamma ${root.gamma}`]);
     }
 
-    function startNiriSunset(temp) {
+    function startWlsunset(temp) {
         const low = temp;
         const high = temp + 50;
         Quickshell.execDetached(["bash", "-c",
             `pkill -x wlsunset; sleep 0.05; wlsunset -T ${high} -t ${low} -S 23:59 -s 00:00 -d 1 & disown`]);
     }
 
-    function stopNiriSunset() {
+    function stopWlsunset() {
         Quickshell.execDetached(["bash", "-c", "pkill -x wlsunset"]);
     }
 
     function fetchState() {
-        if (root.isNiri) {
-            niriFetchProc.running = true;
-        } else {
+        if (root.isHyprland) {
             fetchProc.running = true;
+        } else {
+            wlsunsetFetchProc.running = true;
         }
     }
 
@@ -178,13 +180,13 @@ Singleton {
     }
 
     Process {
-        id: niriFetchProc
+        id: wlsunsetFetchProc
         running: false
         command: ["bash", "-c", "pgrep -x wlsunset"]
         stdout: StdioCollector {
-            id: niriStateCollector
+            id: wlsunsetStateCollector
             onStreamFinished: {
-                root.temperatureActive = niriStateCollector.text.trim().length > 0;
+                root.temperatureActive = wlsunsetStateCollector.text.trim().length > 0;
             }
         }
     }

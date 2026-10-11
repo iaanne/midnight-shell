@@ -3,7 +3,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Caelestia.Internal
 import qs.services
 
 QtObject {
@@ -14,8 +13,10 @@ QtObject {
 
     signal loaded
 
-    readonly property string configPath: Quickshell.env("HOME") + "/.config/niri/config.kdl"
+    readonly property string configPath: Compositor.keybindConfigPath
     readonly property string scriptsDir: Quickshell.shellDir + "/modules/keybinds/scripts"
+    /// Keybind search supported: capability keybindSource + a config path exist.
+    readonly property bool available: Compositor.keybindsAvailable
 
     property FileView configFileView: FileView {
         path: root.configPath
@@ -35,7 +36,7 @@ QtObject {
                         root.loaded();
                     }
                 } catch (e) {
-                    console.error("Failed to parse niri keybinds: " + e);
+                    console.error("Failed to parse keybinds: " + e);
                 }
             }
         }
@@ -49,6 +50,8 @@ QtObject {
     }
 
     function loadKeybinds(): void {
+        if (!available)
+            return;
         if (initialized && keybinds.length > 0)
             return;
         keybinds = [];
@@ -57,6 +60,8 @@ QtObject {
     }
 
     function reload(): void {
+        if (!available)
+            return;
         keybinds = [];
         initialized = false;
         if (!parserProcess.running)
@@ -82,39 +87,39 @@ QtObject {
         if (!action)
             return;
 
-        // Map human-readable actions to Niri IPC calls
+        // Map human-readable actions to neutral compositor verbs
         if (action.includes("close window") || action.includes("close-window")) {
-            Niri.closeFocusedWindow();
+            Compositor.closeFocusedWindow();
         } else if (action.includes("toggle floating") || action.includes("toggle-window-floating")) {
-            Niri.toggleWindowFloating();
+            Compositor.toggleWindowFloating();
         } else if (action.includes("toggle fullscreen") || action.includes("fullscreen")) {
-            Niri.toggleFullscreen();
+            Compositor.toggleFullscreen();
         } else if (action.includes("toggle maximize") || action.includes("maximize")) {
-            Niri.toggleMaximize();
+            Compositor.toggleMaximize();
         } else if (action.includes("toggle overview") || action.includes("overview")) {
-            Niri.toggleOverview();
+            Compositor.toggleOverview();
         } else if (action.includes("center window")) {
-            Niri.centerWindow();
+            Compositor.centerWindow();
         } else if (action.includes("focus column left")) {
-            NiriIpc.action("focus-column-left");
+            Compositor.focusDirection("left");
         } else if (action.includes("focus column right")) {
-            NiriIpc.action("focus-column-right");
+            Compositor.focusDirection("right");
         } else if (action.includes("focus window up")) {
-            NiriIpc.action("focus-window-up");
+            Compositor.focusDirection("up");
         } else if (action.includes("focus window down")) {
-            NiriIpc.action("focus-window-down");
+            Compositor.focusDirection("down");
         } else if (action.includes("focus workspace up")) {
-            Niri.switchToWorkspaceUpDown("up");
+            Compositor.switchToWorkspaceUpDown("up");
         } else if (action.includes("focus workspace down")) {
-            Niri.switchToWorkspaceUpDown("down");
+            Compositor.switchToWorkspaceUpDown("down");
         } else if (action.includes("move column left")) {
-            NiriIpc.action("move-column-left");
+            Compositor.moveDirection("left");
         } else if (action.includes("move column right")) {
-            NiriIpc.action("move-column-right");
+            Compositor.moveDirection("right");
         } else if (action.includes("move window up")) {
-            NiriIpc.action("move-window-up");
+            Compositor.moveDirection("up");
         } else if (action.includes("move window down")) {
-            NiriIpc.action("move-window-down");
+            Compositor.moveDirection("down");
         } else if (action.includes("spawn")) {
             // Extract the command after "spawn " if present
             const spawnMatch = action.match(/spawn\s+(.+)/);
@@ -127,6 +132,7 @@ QtObject {
     }
 
     Component.onCompleted: {
-        loadKeybinds();
+        if (available)
+            loadKeybinds();
     }
 }

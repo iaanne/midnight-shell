@@ -26,8 +26,8 @@ Singleton {
     }
 
     Connections {
-        target: Niri
-        function onWindowChanged(): void {
+        target: Compositor
+        function onWindowOpenedOrChanged(): void {
             updateDebouncer.restart();
         }
         function onWindowsChanged(): void {
@@ -35,9 +35,9 @@ Singleton {
         }
     }
 
-    // TODO: Niri monitor change tracking
+    // TODO: monitor change tracking
     // Instantiator {
-    //     model: Niri.outputs
+    //     model: Compositor.outputs
     //     Connections {
     //         target: modelData
     //         function onLastIpcObjectChanged(): void {
@@ -82,7 +82,7 @@ Singleton {
         if (GlobalConfig.services.pipPaused) return;
 
         let foundPip = false;
-        const toplevels = Niri.windows;
+        const toplevels = Compositor.windows;
         for (let i = 0; i < toplevels.length; i++) {
             const t = toplevels[i];
             if (t && t.title && t.title.match(/Picture[- ]in[- ][Pp]icture/)) {
@@ -102,7 +102,7 @@ Singleton {
     function movePip(t): void {
         if (GlobalConfig.services.pipPaused) return;
 
-        const activeTop = Niri.focusedWindow;
+        const activeTop = Compositor.focusedWindow;
         if (activeTop && activeTop.id === t.id) {
             return; // Pause auto-alignment while the user is interacting with the window!
         }
@@ -116,10 +116,10 @@ Singleton {
             root.currentPipAddress = addr;
         }
 
-        let output = Niri.outputs[Niri.focusedMonitorName];
+        let output = Compositor.getOutput(Compositor.focusedMonitorName);
 
         if (GlobalConfig.services.pipFollowFocus) {
-            output = Niri.outputs[Niri.focusedMonitorName];
+            output = Compositor.getOutput(Compositor.focusedMonitorName);
         }
 
         if (!output) return;
@@ -138,8 +138,8 @@ Singleton {
         const monitor_width = (isVertical ? rawHeight : rawWidth) / (output.scale ?? 1);
         const monitor_height = (isVertical ? rawWidth : rawHeight) / (output.scale ?? 1);
 
-        const sizeX = t.layout?.window_size?.[0] ?? 0;
-        const sizeY = t.layout?.window_size?.[1] ?? 0;
+        const sizeX = t.width ?? 0;
+        const sizeY = t.height ?? 0;
 
         const currentX = null; // TODO: Niri does not expose absolute window position
         const currentY = null;

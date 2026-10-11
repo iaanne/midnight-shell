@@ -16,15 +16,19 @@ GridLayout {
     required property int activeWsId
     required property var occupied
     required property int groupOffset
+    required property var outputWorkspaces
 
+    // Slot number = per-output workspace index (1-based)
+    readonly property int ws: groupOffset + index + 1
+    readonly property var wsData: outputWorkspaces.find(w => w.index === ws) ?? null
+    readonly property string wsId: wsData ? String(wsData.id) : ""
+    readonly property bool isOccupied: occupied[ws] ?? false
     readonly property bool isWorkspace: true // Flag for finding workspace children
     readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
 
     // Unanimated prop for others to use as reference
     readonly property int size: isHorizontal ? (implicitWidth + (hasWindows ? Tokens.padding.extraSmall : 0)) : (implicitHeight + (hasWindows ? Tokens.padding.extraSmall : 0))
 
-    readonly property int ws: groupOffset + index + 1
-    readonly property bool isOccupied: occupied[ws] ?? false
     readonly property bool hasWindows: isOccupied && Config.bar.workspaces.showWindows && (Config.bar.workspaces.maxWindowIcons > 0)
     readonly property bool focused: activeWsId === ws
     readonly property list<int> focusedShapeList: [MaterialShape.Slanted, MaterialShape.Oval, MaterialShape.Pill, MaterialShape.Triangle, MaterialShape.Arrow, MaterialShape.Diamond, MaterialShape.Pentagon, MaterialShape.Gem, MaterialShape.VerySunny, MaterialShape.Sunny, MaterialShape.Cookie4Sided, MaterialShape.Cookie6Sided, MaterialShape.Cookie7Sided, MaterialShape.Cookie9Sided, MaterialShape.Cookie12Sided, MaterialShape.Clover4Leaf, MaterialShape.SoftBurst, MaterialShape.Ghostish]
@@ -68,8 +72,7 @@ GridLayout {
         StyledText {
             animate: true
             text: {
-                const ws = Niri.allWorkspaces.find(w => w.id === root.ws);
-                const wsName = !ws || ws.name == root.ws ? root.ws : ws.name[0];
+                const wsName = !root.wsData || root.wsData.name == root.ws ? root.ws : root.wsData.name[0];
                 let displayName = wsName.toString();
                 if (Config.bar.workspaces.capitalisation === BarWorkspaceCapitalisation.Upper) {
                     displayName = displayName.toUpperCase();
@@ -271,8 +274,7 @@ GridLayout {
             Repeater {
                 model: ScriptModel {
                     values: {
-                        const ws = root.ws;
-                        const windows = Niri.windows.filter(c => c.workspace_id === ws);
+                        const windows = root.wsId ? Compositor.windows.filter(c => c.workspaceId === root.wsId) : [];
                         const maxIcons = root.Config.bar.workspaces.maxWindowIcons;
                         return maxIcons > 0 ? windows.slice(0, maxIcons) : windows;
                     }
@@ -282,7 +284,7 @@ GridLayout {
                     required property var modelData
 
                     grade: 0
-                    text: Icons.getAppCategoryIcon(modelData.app_id, "terminal")
+                    text: Icons.getAppCategoryIcon(modelData.appId, "terminal")
                     color: Colours.palette.m3onSurfaceVariant
                 }
             }
@@ -318,7 +320,7 @@ GridLayout {
             Repeater {
                 model: ScriptModel {
                     values: {
-                        const windows = Niri.getWindowsByWorkspaceId(root.ws);
+                        const windows = root.wsId ? Compositor.windows.filter(c => c.workspaceId === root.wsId) : [];
                         const maxIcons = root.Config.bar.workspaces.maxWindowIcons;
                         return maxIcons > 0 ? windows.slice(0, maxIcons) : windows;
                     }
@@ -328,7 +330,7 @@ GridLayout {
                     required property var modelData
 
                     grade: 0
-                    text: Icons.getAppCategoryIcon(modelData.app_id, "terminal")
+                    text: Icons.getAppCategoryIcon(modelData.appId, "terminal")
                     color: Colours.palette.m3onSurfaceVariant
                 }
             }

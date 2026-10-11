@@ -12,7 +12,7 @@ Item {
 
     required property PopoutState popouts
 
-    implicitWidth: Niri.focusedWindow ? child.implicitWidth : -Tokens.padding.extraLargeIncreased
+    implicitWidth: Compositor.focusedWindow ? child.implicitWidth : -Tokens.padding.extraLargeIncreased
     implicitHeight: child.implicitHeight
 
     Column {
@@ -34,7 +34,7 @@ Item {
                 asynchronous: true
                 Layout.alignment: Qt.AlignVCenter
                 implicitSize: details.implicitHeight
-                source: Icons.getAppIcon(Niri.focusedWindow?.app_id ?? "", "image-missing")
+                source: Icons.getAppIcon(Compositor.focusedWindow?.appId ?? "", "image-missing")
             }
 
             ColumnLayout {
@@ -46,14 +46,14 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Niri.focusedWindowTitle ?? ""
+                    text: Compositor.focusedWindowTitle ?? ""
                     font: Tokens.font.body.medium
                     elide: Text.ElideRight
                 }
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Niri.focusedWindow?.app_id ?? ""
+                    text: Compositor.focusedWindow?.appId ?? ""
                     color: Colours.palette.m3onSurfaceVariant
                     elide: Text.ElideRight
                 }
@@ -91,10 +91,9 @@ Item {
                 id: preview
 
                 captureSource: {
-                    const top = Niri.focusedWindow; // qmllint disable unresolved-type
-                    if (!top || !top.wayland) return null;
-                    const size = top.layout?.window_size;
-                    if (size && (size[0] <= 0 || size[1] <= 0)) return null;
+                    const top = Compositor.focusedWindow;
+                    if (!top || !top.wayland) return null; // no wayland surface handle in neutral schema
+                    if (top.width <= 0 || top.height <= 0) return null;
                     return top.wayland;
                 }
                 live: visible

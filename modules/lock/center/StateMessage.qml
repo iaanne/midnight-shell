@@ -69,25 +69,25 @@ Item {
     }
 
     readonly property string stateMsg: {
-        if (Niri.kbLayout !== Niri.defaultKbLayout) {
-            if (Niri.capsLock && Niri.numLock)
+        if (Compositor.kbLayout !== Compositor.defaultKbLayout) {
+            if (Compositor.capsLock && Compositor.numLock)
                 // TRANSLATORS: %1 = the active keyboard layout name, e.g. "English (US)"
-                return Tr.tr("Caps lock and Num lock are ON.\nKeyboard layout: %1").arg(Niri.kbLayout);
-            if (Niri.capsLock)
+                return Tr.tr("Caps lock and Num lock are ON.\nKeyboard layout: %1").arg(Compositor.kbLayout);
+            if (Compositor.capsLock)
                 // TRANSLATORS: %1 = the active keyboard layout name, e.g. "English (US)"
-                return Tr.tr("Caps lock is ON. Keyboard layout: %1").arg(Niri.kbLayout);
-            if (Niri.numLock)
+                return Tr.tr("Caps lock is ON. Keyboard layout: %1").arg(Compositor.kbLayout);
+            if (Compositor.numLock)
                 // TRANSLATORS: %1 = the active keyboard layout name, e.g. "English (US)"
-                return Tr.tr("Num lock is ON. Keyboard layout: %1").arg(Niri.kbLayout);
+                return Tr.tr("Num lock is ON. Keyboard layout: %1").arg(Compositor.kbLayout);
             // TRANSLATORS: %1 = the active keyboard layout name, e.g. "English (US)"
-            return Tr.tr("Keyboard layout: %1").arg(Niri.kbLayout);
+            return Tr.tr("Keyboard layout: %1").arg(Compositor.kbLayout);
         }
 
-        if (Niri.capsLock && Niri.numLock)
+        if (Compositor.capsLock && Compositor.numLock)
             return Tr.tr("Caps lock and Num lock are ON.");
-        if (Niri.capsLock)
+        if (Compositor.capsLock)
             return Tr.tr("Caps lock is ON.");
-        if (Niri.numLock)
+        if (Compositor.numLock)
             return Tr.tr("Num lock is ON.");
 
         return "";

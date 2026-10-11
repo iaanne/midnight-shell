@@ -11,15 +11,20 @@ Singleton {
     id: root
 
     // --- Core ---
-    readonly property bool niriAvailable: NiriIpc.available
+    readonly property string kind: CompositorIpc.kind
+    readonly property string compositorName: CompositorIpc.name
+    readonly property var capabilities: CompositorIpc.capabilities
+    readonly property bool available: CompositorIpc.available
+    readonly property string keybindConfigPath: CompositorIpc.keybindConfigPath
+    /// Keybind search available: a parser source + a config file path exist.
+    readonly property bool keybindsAvailable: !!capabilities.keybindSource && keybindConfigPath !== ""
 
     // --- Workspaces ---
-    readonly property var allWorkspaces: NiriIpc.workspaces
-    readonly property int focusedWorkspaceIndex: NiriIpc.focusedWorkspaceIndex
-    readonly property int focusedWorkspaceId: NiriIpc.focusedWorkspaceId
-    readonly property var currentOutputWorkspaces: NiriIpc.currentOutputWorkspaces
-    readonly property string focusedMonitorName: NiriIpc.focusedMonitorName
-    readonly property var workspaceHasWindows: NiriIpc.workspaceHasWindows
+    readonly property var allWorkspaces: CompositorIpc.workspaces
+    readonly property int focusedWorkspaceIndex: CompositorIpc.focusedWorkspaceIndex
+    readonly property string focusedWorkspaceId: CompositorIpc.focusedWorkspaceId
+    readonly property string focusedMonitorName: CompositorIpc.focusedMonitorName
+    readonly property var currentOutputWorkspaces: allWorkspaces.filter(w => w.output === focusedMonitorName)
 
     // UI context menu state
     property bool wsContextExpanded: false
@@ -45,7 +50,7 @@ Singleton {
 
     onFocusedWindowIdChanged: {
         // Handle single window move after focus
-        if (_moveAfterFocusPendingCb && Number(focusedWindowId) === Number(_moveAfterFocusPendingId)) {
+        if (_moveAfterFocusPendingCb && focusedWindowId === _moveAfterFocusPendingId) {
             var cb = _moveAfterFocusPendingCb;
             _moveAfterFocusPendingCb = null;
             _moveAfterFocusPendingId = "";
@@ -54,11 +59,11 @@ Singleton {
 
         // Handle sequential group moves
         var s = _seqState;
-        if (s && Number(focusedWindowId) === Number(s.curWindowId)) {
+        if (s && focusedWindowId === s.curWindowId) {
             if (s.i >= s.windowIds.length) {
                 // Done sequential moves, restore initial focus
                 _seqState = null;
-                root.focusWindow(Number(s.initialWindowId));
+                root.focusWindow(s.initialWindowId);
             } else {
                 // Execute next move in sequence
                 var wid = s.windowIds[s.i];
@@ -77,28 +82,39 @@ Singleton {
     }
 
     // --- Windows ---
-    readonly property var windows: NiriIpc.windows
-    readonly property int focusedWindowIndex: NiriIpc.focusedWindowIndex
-    readonly property string focusedWindowId: NiriIpc.focusedWindowId
-    readonly property string focusedWindowTitle: NiriIpc.focusedWindowTitle
-    readonly property string focusedWindowClass: NiriIpc.focusedWindowClass
-    readonly property var focusedWindow: NiriIpc.focusedWindow
-    readonly property var lastFocusedWindow: NiriIpc.lastFocusedWindow
-    readonly property string scrollDirection: NiriIpc.scrollDirection
-    readonly property bool inOverview: NiriIpc.inOverview
+    readonly property var windows: CompositorIpc.windows
+    readonly property int focusedWindowIndex: CompositorIpc.focusedWindowIndex
+    readonly property string focusedWindowId: CompositorIpc.focusedWindowId
+    readonly property string focusedWindowTitle: CompositorIpc.focusedWindowTitle
+    readonly property string focusedWindowClass: CompositorIpc.focusedWindowClass
+    readonly property var focusedWindow: CompositorIpc.focusedWindow
+    readonly property var lastFocusedWindow: CompositorIpc.lastFocusedWindow
+    readonly property string scrollDirection: CompositorIpc.scrollDirection
+    readonly property bool inOverview: CompositorIpc.inOverview
     signal windowOpenedOrChanged(var windowData)
+    signal windowClosed(string id)
 
     // --- Outputs ---
-    readonly property var outputs: NiriIpc.outputs
+    // CompositorIpc.outputs is a name-keyed map (QVariantMap → JS object).
+    readonly property var outputs: CompositorIpc.outputs
+    readonly property var outputsByName: outputs
+    function getOutput(name): var {
+        return outputs?.[name] ?? null;
+    }
 
     // --- Keyboard ---
-    readonly property var kbLayoutsArray: NiriIpc.kbLayoutsArray
-    readonly property int kbLayoutIndex: NiriIpc.kbLayoutIndex
-    readonly property string kbLayouts: NiriIpc.kbLayouts
-    readonly property string defaultKbLayout: NiriIpc.defaultKbLayout
-    readonly property string kbLayout: NiriIpc.kbLayout
-    readonly property bool capsLock: NiriIpc.capsLock
-    readonly property bool numLock: NiriIpc.numLock
+    readonly property var kbLayoutsArray: CompositorIpc.kbLayoutsArray
+    readonly property int kbLayoutIndex: CompositorIpc.kbLayoutIndex
+    readonly property string kbLayouts: CompositorIpc.kbLayouts
+    readonly property string defaultKbLayout: CompositorIpc.defaultKbLayout
+    readonly property string kbLayout: CompositorIpc.kbLayout
+    readonly property bool capsLock: CompositorIpc.capsLock
+    readonly property bool numLock: CompositorIpc.numLock
+
+    function switchKbLayout(index): bool {
+        if (!available || !capabilities.switchKbLayout) return false;
+        return CompositorIpc.switchKbLayout(index);
+    }
 
     property bool _lockKeysInitialized: false
     Timer { interval: 1500; running: true; onTriggered: root._lockKeysInitialized = true }
@@ -127,19 +143,26 @@ Singleton {
         Toaster.toast("Keyboard layout changed", "Layout changed to: " + kbLayout, "keyboard");
     }
 
-    // --- Initialization ---
+    // --- Signal fan-out ---
     Connections {
-        target: NiriIpc
+        target: CompositorIpc
         function onWindowOpenedOrChanged(windowData) {
             root.windowOpenedOrChanged(windowData);
         }
+        function onWindowClosed(id) {
+            root.windowClosed(id);
+        }
     }
 
-    Component.onCompleted: console.log("NiriService: Using native C++ IPC (NiriIpc)")
+    Component.onCompleted: console.log("CompositorService: kind=" + kind + " backend=" + compositorName)
 
     // --- Workspace Functions ---
     function getWorkspaceIdxById(workspaceId) {
-        return NiriIpc.getWorkspaceIdxById(workspaceId);
+        return CompositorIpc.getWorkspaceIdxById(String(workspaceId));
+    }
+
+    function getWorkspaceById(workspaceId) {
+        return allWorkspaces.find(w => w.id === String(workspaceId)) ?? null;
     }
 
     function getActiveWorkspaceName() {
@@ -157,11 +180,8 @@ Singleton {
     }
 
     function getWorkspaceNameById(id) {
-        if (allWorkspaces && id >= 0) {
-            const ws = allWorkspaces.find(w => w.id === id);
-            return ws?.name || "";
-        }
-        return "";
+        const ws = getWorkspaceById(id);
+        return ws?.name || "";
     }
 
     function getWorkspaceByIndex(index) {
@@ -176,55 +196,53 @@ Singleton {
     }
 
     function getOccupiedWorkspaceCount() {
-        return allWorkspaces.filter(w => w.active_window_id !== "").length;
+        return allWorkspaces.filter(w => w.occupied).length;
     }
 
     function getCurrentOutputWorkspaceNumbers() {
-        return currentOutputWorkspaces.map(w => w.idx + 1);
+        return currentOutputWorkspaces.map(w => w.index);
     }
 
     function getCurrentWorkspaceNumber() {
         if (focusedWorkspaceIndex >= 0 && focusedWorkspaceIndex < allWorkspaces.length) {
-            return allWorkspaces[focusedWorkspaceIndex].idx;
+            return allWorkspaces[focusedWorkspaceIndex].index;
         }
         return 1;
     }
 
     function switchToWorkspace(workspaceId) {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("focus-workspace", [workspaceId.toString()]);
+        if (!available) return false;
+        return CompositorIpc.focusWorkspace(String(workspaceId));
     }
 
     function switchToWorkspaceUpDown(direction) {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("focus-workspace-" + direction, []);
+        if (!available) return false;
+        return CompositorIpc.focusWorkspaceRelative(direction === "up" ? -1 : 1);
     }
 
     function switchToWorkspaceByIndex(index) {
-        if (!niriAvailable || index < 0 || index >= allWorkspaces.length) return false;
-        return switchToWorkspace(allWorkspaces[index].idx);
+        if (!available || index < 0 || index >= allWorkspaces.length) return false;
+        return switchToWorkspace(allWorkspaces[index].id);
     }
 
     function switchToWorkspaceByNumber(number, output) {
-        if (!niriAvailable) return false;
+        if (!available) return false;
         const targetOutput = output || focusedMonitorName;
         if (!targetOutput) {
-            console.warn("NiriService: No output specified for workspace switching");
+            console.warn("CompositorService: No output specified for workspace switching");
             return false;
         }
-        const outputWorkspaces = allWorkspaces
-            .filter(w => w.output === targetOutput)
-            .sort((a, b) => a.idx - b.idx);
-        if (number >= 1 && number <= outputWorkspaces.length) {
-            return switchToWorkspace(outputWorkspaces[number - 1].idx);
+        const ws = allWorkspaces.find(w => w.output === targetOutput && w.index === number);
+        if (ws) {
+            return switchToWorkspace(ws.id);
         }
-        console.warn("NiriService: No workspace", number, "found on output", targetOutput);
+        console.warn("CompositorService: No workspace", number, "found on output", targetOutput);
         return false;
     }
 
-    function moveWindowToWorkspace(workspaceIdx) {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("move-window-to-workspace", [workspaceIdx.toString()]);
+    function moveWindowToWorkspace(workspaceId) {
+        if (!available) return false;
+        return CompositorIpc.moveWindowToWorkspace(String(workspaceId));
     }
 
     // --- Window Functions ---
@@ -232,31 +250,31 @@ Singleton {
         if (!allWorkspaces || focusedWorkspaceIndex === undefined) return [];
         const currentWs = allWorkspaces[focusedWorkspaceIndex];
         if (!currentWs?.id) return [];
-        return windows.filter(w => w.workspace_id === currentWs.id);
+        return windows.filter(w => w.workspaceId === currentWs.id);
     }
 
     function getWindowsByWorkspaceId(wsid) {
-        return windows.filter(w => w.workspace_id === wsid);
+        return windows.filter(w => w.workspaceId === String(wsid));
     }
 
     function getWindowsByWorkspaceIndex(index) {
         if (index < 0 || index >= allWorkspaces.length) return [];
         const wsId = allWorkspaces[index].id;
-        return windows.filter(w => w.workspace_id === wsId);
+        return windows.filter(w => w.workspaceId === wsId);
     }
 
     function getWindowsInScreen(screenX, screenY, screenWidth, screenHeight, windowBorder, padding) {
-        if (!focusedWindow?.layout?.pos_in_scrolling_layout) return [];
+        if (!capabilities.windowGrid || !focusedWindow?.grid) return [];
 
-        const focusedCol = focusedWindow.layout.pos_in_scrolling_layout[0];
-        const focusedRow = focusedWindow.layout.pos_in_scrolling_layout[1];
+        const focusedCol = focusedWindow.grid.col;
+        const focusedRow = focusedWindow.grid.row;
 
         return getActiveWorkspaceWindows().map(window => {
-            if (!window.layout?.pos_in_scrolling_layout || !window.layout?.window_size) return null;
+            if (!window.grid || !window.width || !window.height) return null;
 
-            const colOffset = window.layout.pos_in_scrolling_layout[0] - focusedCol;
-            const rowOffset = window.layout.pos_in_scrolling_layout[1] - focusedRow;
-            const focusedWidth = focusedWindow.layout.window_size[0];
+            const colOffset = window.grid.col - focusedCol;
+            const rowOffset = window.grid.row - focusedRow;
+            const focusedWidth = focusedWindow.width;
 
             let focusedScreenX;
             if (focusedWidth < screenWidth - windowBorder) {
@@ -265,10 +283,10 @@ Singleton {
                 focusedScreenX = 0;
             }
 
-            const winX = focusedScreenX + (colOffset * window.layout.window_size[0]) - windowBorder;
-            const winY = rowOffset * window.layout.window_size[1] + windowBorder;
-            const winW = window.layout.window_size[0] - padding * 2;
-            const winH = window.layout.window_size[1] - padding * 2;
+            const winX = focusedScreenX + (colOffset * window.width) - windowBorder;
+            const winY = rowOffset * window.height + windowBorder;
+            const winW = window.width - padding * 2;
+            const winH = window.height - padding * 2;
 
             if (winX < screenWidth + windowBorder && winY < screenHeight && winX + winW > 0 && winY + winH > 0) {
                 return { window: window, screenX: winX, screenY: winY, screenW: winW, screenH: winH };
@@ -278,99 +296,94 @@ Singleton {
     }
 
     function focusWindow(windowID) {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("focus-window", ["--id", windowID.toString()]);
+        if (!available) return false;
+        return CompositorIpc.focusWindow(String(windowID));
     }
 
     function closeWindow(windowId) {
-        if (!niriAvailable) return false;
-        const id = windowId ? windowId.toString() : focusedWindowId.toString();
-        return NiriIpc.action("close-window", ["--id", id]);
+        if (!available) return false;
+        const id = windowId ? String(windowId) : focusedWindowId;
+        return CompositorIpc.closeWindow(id);
     }
 
     function closeFocusedWindow() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("close-window", []);
+        if (!available) return false;
+        return CompositorIpc.closeWindow();
     }
 
     function toggleWindowFloating(windowId) {
-        if (!niriAvailable) return false;
-        const id = windowId ? windowId.toString() : focusedWindowId.toString();
-        return NiriIpc.action("toggle-window-floating", ["--id", id]);
-    }
-
-    function toggleWindowOpacity() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("toggle-window-rule-opacity", []);
+        if (!available) return false;
+        const id = windowId ? String(windowId) : focusedWindowId;
+        return CompositorIpc.toggleFloating(id);
     }
 
     function expandColumnToAvailable() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("expand-column-to-available-width", []);
+        if (!available) return false;
+        return CompositorIpc.expandWindow();
     }
 
     function centerWindow() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("center-window", []);
+        if (!available) return false;
+        return CompositorIpc.centerWindow();
     }
 
     function screenshotWindow() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("screenshot-window", []);
+        if (!available) return false;
+        return CompositorIpc.screenshotWindow();
     }
 
-    function keyboardShortcutsInhibitWindow() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("toggle-keyboard-shortcuts-inhibit", []);
+    function focusDirection(dir) {
+        if (!available || !capabilities.focusDirection) return false;
+        return CompositorIpc.focusDirection(dir);
     }
 
-    function toggleWindowedFullscreen() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("toggle-windowed-fullscreen", []);
+    function moveDirection(dir) {
+        if (!available || !capabilities.moveDirection) return false;
+        return CompositorIpc.moveDirection(dir);
     }
 
     function toggleFullscreen() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("fullscreen-window", []);
+        if (!available) return false;
+        return CompositorIpc.toggleFullscreen();
     }
 
     function toggleMaximize() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("maximize-column", []);
+        if (!available) return false;
+        return CompositorIpc.toggleMaximize();
     }
 
     function toggleOverview() {
-        if (!niriAvailable) return false;
-        return NiriIpc.action("toggle-overview", []);
+        if (!available) return false;
+        return CompositorIpc.toggleOverview();
     }
 
-    function doScreenTransition(delayMs) {
-        if (!niriAvailable) return false;
-        var delay = delayMs !== undefined ? delayMs : 500;
-        return NiriIpc.action("do-screen-transition", ["-d", delay.toString()]);
+    function dispatch(command) {
+        return CompositorIpc.dispatch(command);
     }
 
+    // --- Column move helpers (niri grid ordering; capability-gated) ---
     function moveColumnToIndex(windowId, index) {
-        if (!niriAvailable) return false;
+        if (!available || !capabilities.moveWindowToIndex) return false;
         if (focusWindow(windowId)) {
-            return NiriIpc.action("move-column-to-index", [index.toString()]);
+            return CompositorIpc.moveWindowToIndex(index);
         }
         return false;
     }
 
     function moveColumnToIndexAfterFocus(windowId, index) {
-        if (!niriAvailable) return false;
+        if (!available || !capabilities.moveWindowToIndex) return false;
 
-        if (Number(windowId) === Number(focusedWindowId)) {
-            return NiriIpc.action("move-column-to-index", [index.toString()]);
+        const id = String(windowId);
+        if (id === focusedWindowId) {
+            return CompositorIpc.moveWindowToIndex(index);
         }
 
-        _moveAfterFocusPendingId = windowId.toString();
+        _moveAfterFocusPendingId = id;
         _moveAfterFocusPendingCb = function() {
-            NiriIpc.action("move-column-to-index", [index.toString()]);
+            CompositorIpc.moveWindowToIndex(index);
         };
 
-        focusWindow(windowId);
+        focusWindow(id);
         return true;
     }
 
@@ -378,9 +391,9 @@ Singleton {
         if (!windowIds || windowIds.length === 0) return;
 
         _seqState = {
-            initialWindowId: initialWindowId,
-            curWindowId: windowIds[0],
-            windowIds: windowIds,
+            initialWindowId: String(initialWindowId),
+            curWindowId: String(windowIds[0]),
+            windowIds: windowIds.map(w => String(w)),
             targetIndex: targetIndex,
             i: 1
         };
@@ -391,12 +404,10 @@ Singleton {
     // --- Grouping Functions ---
     function sortWindows(windowList) {
         return windowList.slice().sort((a, b) => {
-            const aPos = Array.isArray(a.layout?.pos_in_scrolling_layout)
-                ? a.layout.pos_in_scrolling_layout : [0, 0];
-            const bPos = Array.isArray(b.layout?.pos_in_scrolling_layout)
-                ? b.layout.pos_in_scrolling_layout : [0, 0];
-            if (aPos[0] !== bPos[0]) return aPos[0] - bPos[0];
-            return aPos[1] - bPos[1];
+            const aPos = a.grid ?? { col: 0, row: 0 };
+            const bPos = b.grid ?? { col: 0, row: 0 };
+            if (aPos.col !== bPos.col) return aPos.col - bPos.col;
+            return aPos.row - bPos.row;
         });
     }
 
@@ -406,10 +417,10 @@ Singleton {
 
         for (var j = 0; j < windowList.length; j++) {
             var w = windowList[j];
-            var appId = w.app_id || "unknown";
+            var appId = w.appId || "unknown";
             if (!groups[appId]) {
                 groups[appId] = {
-                    app_id: appId,
+                    appId: appId,
                     id: w.id,
                     title: w.title,
                     index: w.index,
@@ -436,9 +447,9 @@ Singleton {
 
         for (var j = 0; j < windowList.length; j++) {
             var w = windowList[j];
-            if (!currentGroup || currentGroup.app_id !== w.app_id) {
+            if (!currentGroup || currentGroup.appId !== w.appId) {
                 currentGroup = {
-                    app_id: w.app_id,
+                    appId: w.appId,
                     windows: [w],
                     count: 1,
                     title: w.title,
@@ -448,7 +459,7 @@ Singleton {
                 groups.push(currentGroup);
             } else {
                 currentGroup.windows.push(w);
-                currentGroup.count = currentGroup.windows.length;
+                currentGroup.count++;
             }
         }
         return groups;

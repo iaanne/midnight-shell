@@ -16,7 +16,7 @@ Item {
     required property var list
 
     function clicked(): void {
-        Niri.focusWindow(root.modelData.id);
+        Compositor.focusWindow(root.modelData.id);
         root.list.screenState.launcher = false;
     }
 

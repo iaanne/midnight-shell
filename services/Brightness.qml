@@ -26,7 +26,7 @@ Singleton {
 
     function getMonitor(query: string): var {
         if (query === "active") {
-            return monitors.find(m => Niri.focusedMonitorName === m.modelData.name); // qmllint disable missing-property
+            return monitors.find(m => Compositor.focusedMonitorName === m.modelData.name); // qmllint disable missing-property
         }
 
         if (query.startsWith("model:")) {
@@ -41,7 +41,7 @@ Singleton {
 
         if (query.startsWith("id:")) {
             const id = parseInt(query.slice(3), 10);
-            const outputNames = Object.keys(Niri.outputs);
+            const outputNames = Object.keys(Compositor.outputs);
             const name = outputNames[id] ?? null;
             return monitors.find(m => m.modelData.name === name); // qmllint disable missing-property
         }

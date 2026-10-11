@@ -89,9 +89,9 @@ ColumnLayout {
 
         Repeater {
             model: {
-                const workspaces = Niri.allWorkspaces;
+                const workspaces = Compositor.allWorkspaces;
                 if (!workspaces || workspaces.length === 0) return [];
-                const focused = Niri.focusedWorkspaceIndex ?? 0;
+                const focused = Compositor.focusedWorkspaceIndex ?? 0;
                 const start = Math.max(0, focused - 4);
                 const end = Math.min(workspaces.length, start + 10);
                 return workspaces.slice(start, end);
@@ -99,12 +99,12 @@ ColumnLayout {
 
             Button {
                 required property var modelData
-                readonly property int wsIdx: modelData.idx ?? 0
-                readonly property bool isCurrent: root.client?.workspace_id === modelData.id
+                readonly property int wsIdx: modelData.index ?? 0
+                readonly property bool isCurrent: root.client?.workspaceId === modelData.id
 
                 onClicked: {
-                    Niri.moveWindowToWorkspace(wsIdx);
-                    Niri.switchToWorkspace(wsIdx);
+                    Compositor.moveWindowToWorkspace(String(modelData.id));
+                    Compositor.switchToWorkspace(String(modelData.id));
                 }
 
                 color: isCurrent ? Colours.tPalette.m3surfaceContainerHighest : Colours.palette.m3tertiaryContainer
@@ -121,19 +121,18 @@ ColumnLayout {
         Layout.rightMargin: Tokens.padding.large
         Layout.bottomMargin: Tokens.padding.large
 
-        // TODO: Niri has no floating property; adapt when Niri supports floating toggle
         spacing: Tokens.spacing.small
 
         Button {
             color: Colours.palette.m3secondaryContainer
             onColor: Colours.palette.m3onSecondaryContainer
-            text: root.client?.is_floating ? Tr.tr("Tile") : Tr.tr("Float")
-            onClicked: Niri.toggleWindowFloating(root.client?.id ?? 0)
+            text: root.client?.floating ? Tr.tr("Tile") : Tr.tr("Float")
+            onClicked: Compositor.toggleWindowFloating(root.client?.id ?? "")
         }
 
         Loader {
             asynchronous: true
-            active: false // TODO: Niri has no pinned concept
+            active: false // TODO: no pinned concept in neutral schema
             Layout.fillWidth: active
             Layout.leftMargin: active ? 0 : -parent.spacing
             Layout.rightMargin: active ? 0 : -parent.spacing
@@ -142,7 +141,7 @@ ColumnLayout {
                 color: Colours.palette.m3secondaryContainer
                 onColor: Colours.palette.m3onSecondaryContainer
                 text: Tr.tr("Pin")
-                onClicked: console.log("Buttons: pin not yet supported in Niri")
+                onClicked: console.log("Buttons: pin not yet supported")
             }
         }
 
@@ -150,7 +149,7 @@ ColumnLayout {
             color: Colours.palette.m3errorContainer
             onColor: Colours.palette.m3onErrorContainer
             text: Tr.tr("Kill")
-            onClicked: Niri.closeWindow(root.client?.id ?? 0)
+            onClicked: Compositor.closeWindow(root.client?.id ?? "")
         }
     }
 

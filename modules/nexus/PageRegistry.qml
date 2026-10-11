@@ -84,9 +84,9 @@ QtObject {
             category: "shell"
         },
         {
-            label: qsTr("Niri"),
+            label: Tr.tr("Compositor"),
             icon: "layers",
-            description: qsTr("Window manager configuration"),
+            description: Tr.tr("Detected compositor and capabilities"),
             category: "shell"
         },
         {

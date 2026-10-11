@@ -1,14 +1,11 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Quickshell
 import Quickshell.Io
 import Caelestia
 import Caelestia.Config
 import Caelestia.I18n
 import qs.services
-
-// TODO: handle this better later
 
 Item {
     id: model
@@ -21,26 +18,25 @@ Item {
 
     function start() {
         xkbXmlBase.running = true;
-        fetchLayoutsFromNiri.running = true;
+        _fetchFromCompositor();
     }
 
     function refresh() {
         _notifiedLimit = false;
-        fetchLayoutsFromNiri.running = true;
+        _fetchFromCompositor();
     }
 
     function switchTo(idx) {
-        // Niri supports "switch-layout next/prev"; calculate shortest cyclic path
-        const arr = Niri.kbLayoutsArray;
-        if (!arr || arr.length === 0) return;
-        const current = Niri.kbLayoutIndex;
-        const n = arr.length;
-        const diff = ((idx - current) % n + n) % n;
-        const cmd = diff <= n / 2 ? "next" : "prev";
-        const steps = diff <= n / 2 ? diff : n - diff;
-        for (let i = 0; i < steps; i++) {
-            Quickshell.execDetached(["niri", "msg", "action", "switch-layout", cmd]);
-        }
+        Compositor.switchKbLayout(idx);
+    }
+
+    function _fetchFromCompositor() {
+        const layouts = Compositor.kbLayoutsArray;
+        if (!layouts || layouts.length === 0) return;
+        model._setLayouts(layouts);
+        model.activeIndex = Compositor.kbLayoutIndex;
+        model.activeLabel = (model.activeIndex >= 0 && model.activeIndex < layoutsModel.count) ? layoutsModel.get(model.activeIndex).label : "";
+        model._rebuildVisible();
     }
 
     function _buildXmlMap(xml) {
@@ -161,36 +157,6 @@ Item {
         command: ["xmllint", "--xpath", "//layout/configItem[name and description]", "/usr/share/X11/xkb/rules/evdev.xml"]
         stdout: StdioCollector {
             onStreamFinished: model._buildXmlMap(text)
-        }
-    }
-
-    Process {
-        id: fetchLayoutsFromNiri
-
-        // Fetch keyboard layout info directly from Niri IPC
-        command: ["niri", "msg", "keyboard-layouts"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const j = JSON.parse(text);
-                    const names = j?.names || [];
-                    if (names.length > 0) {
-                        model._setLayouts(names);
-                        model.activeIndex = j?.current_idx ?? 0;
-                        model.activeLabel = (model.activeIndex >= 0 && model.activeIndex < layoutsModel.count) ? layoutsModel.get(model.activeIndex).label : "";
-                        model._rebuildVisible();
-                        return;
-                    }
-                } catch (e) {}
-                // Fallback: try Niri properties
-                const layouts = Niri.kbLayoutsArray;
-                if (layouts && layouts.length > 0) {
-                    model._setLayouts(layouts);
-                    model.activeIndex = Niri.kbLayoutIndex;
-                    model.activeLabel = (model.activeIndex >= 0 && model.activeIndex < layoutsModel.count) ? layoutsModel.get(model.activeIndex).label : "";
-                    model._rebuildVisible();
-                }
-            }
         }
     }
 }

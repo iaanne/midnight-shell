@@ -17,7 +17,7 @@ Item {
     readonly property string fontFamily: Config.appearance.font.activeWindow
 
     readonly property string windowTitle: {
-        const title = Niri.focusedWindowTitle;
+        const title = Compositor.focusedWindowTitle;
         if (!title)
             return Tr.trCtx("Desktop", "shown when no window is focused");
         if (Config.bar.activeWindow.compact) {
@@ -70,7 +70,7 @@ Item {
                 const popouts = root.bar.popouts;
                 if (popouts.hasCurrent) {
                     popouts.hasCurrent = false;
-                } else if (Niri.focusedWindow) {
+                } else if (Compositor.focusedWindow) {
                     popouts.currentName = "activewindow";
                     popouts.currentCenter = bar.isHorizontal ? root.mapToItem(null, root.implicitWidth / 2, 0).x : root.mapToItem(null, 0, root.implicitHeight / 2).y;
                     popouts.hasCurrent = true;
@@ -86,7 +86,7 @@ Item {
         anchors.verticalCenter: bar.isHorizontal ? parent.verticalCenter : undefined
 
         animate: true
-        text: Icons.getAppCategoryIcon(Niri.focusedWindow?.app_id ?? Niri.focusedWindowClass, "desktop_windows")
+        text: Icons.getAppCategoryIcon(Compositor.focusedWindow?.appId ?? Compositor.focusedWindowClass, "desktop_windows")
         color: root.colour
     }
 

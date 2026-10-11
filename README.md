@@ -27,7 +27,7 @@ This fork adds the following features on top of the official shell:
 - **Bar**: MacOS-style app dock, Material workspace icons, DND toggle, and a live drag-and-drop components editor.
 - **Desktop**: Floating lyrics, Shimeji pets, dynamic wallpaper recoloring, and Bezel Mode.
 - **Lock Screen**: Configurable auto-lock on startup (`lockOnStartup`), redesigned profile and clock layout, and improved forecast UI.
-- **Niri**: Full support for Niri WM integration and IPC.
+- **Compositor-agnostic**: Full Niri support today, behind a neutral backend seam with other compositors pluggable later.
 - **QuickShare**: Supports the android feature, allowing file transfers between your devices (w/ avahi daemon)
 - **Polkit**: Supplies its own built-in polkit daemon, with animations.
   
@@ -101,7 +101,21 @@ or a devshell. The shell can then be run via `midnight-shell`.
 ## Components
 
 - Widgets: [`Quickshell`](https://quickshell.outfoxxed.me)
-- Window manager: [`Niri`](https://github.com/YaLTeR/niri)
+- Compositor: [`Niri`](https://github.com/YaLTeR/niri) (full support — see [Compositor support](#compositor-support))
+
+### Compositor support
+
+The shell talks to the compositor through a neutral backend seam
+(`plugin/src/Caelestia/Internal/compositor/`, mirrored by `midnight-cli/src/caelestia/compositor/`).
+The detected kind is shown in **Nexus → Compositor** along with the capability matrix.
+
+| Compositor | Status | Notes |
+|---|---|---|
+| [Niri](https://github.com/YaLTeR/niri) | Full support | IPC backend, keybind source (`config.kdl`), shell blur (`ext-background-effect-v1`) |
+| Hyprland, Sway, Mango, Labwc, Dwl, KDE, Umbriel | Detected, backend pending | Shell starts in a degraded state: workspaces, windows and compositor actions are unavailable |
+
+Only `detect()` sniffs environment variables; everything else branches on the detected
+kind. Unsupported actions return `false` and hide behind capability flags.
 
 ## Migration from Official Caelestia
 
@@ -166,7 +180,7 @@ pins `"family": "GoogleSansFlex"` under `appearance.font`, change it to `Caelest
 
 ### Shortcuts/IPC
 
-All keybinds are accessible via Niri global shortcuts.
+All keybinds are accessible via global shortcuts.
 
 All IPC commands can be accessed via `qs -c ~/.config/quickshell/caelestia ipc show`, for example:
 
@@ -196,6 +210,8 @@ List the names of your available monitors by running:
 ```sh
 niri msg -j outputs | jq -r 'keys[]'
 ```
+
+(This example is niri-specific; on other compositors query outputs with their own tool, e.g. `hyprctl monitors`.)
 
 Options set in these files will **override** the respective options in the global config. Any options not present in
 per-monitor configs will inherit their values from the global config.
@@ -502,6 +518,7 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
         "showOverFullscreen": false,
         "mediaGifSpeedAdjustment": 300,
         "sessionGifSpeed": 0.7,
+        "scrollMultiplier": 1,
         "apps": {
             "terminal": ["foot"],
             "audio": ["pwvucontrol"],

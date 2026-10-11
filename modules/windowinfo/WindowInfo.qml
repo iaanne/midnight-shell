@@ -13,16 +13,13 @@ Item {
 
     property var client: {
         if (clientAddress !== "") {
-            const id = parseInt(clientAddress);
-            if (!isNaN(id)) {
-                for (const t of Niri.windows) {
-                    if (t.id === id) {
-                        return t;
-                    }
+            for (const t of Compositor.windows) {
+                if (String(t.id) === clientAddress) {
+                    return t;
                 }
             }
         }
-        return Niri.focusedWindow;
+        return Compositor.focusedWindow;
     }
 
     implicitWidth: child.implicitWidth

@@ -221,8 +221,12 @@ QtObject {
             }
         },
         Component {
-            // Niri (placeholder — no config page yet)
-            PlaceholderComp {}
+            // Compositor
+            StackPage {
+                Component {
+                    CompositorPage {}
+                }
+            }
         },
         Component {
             // Services

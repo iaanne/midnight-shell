@@ -74,7 +74,7 @@ RowLayout {
         delegate: StyledRect {
             required property var modelData
 
-            readonly property real windowRatio: (modelData.layout?.window_size && modelData.layout.window_size[0] > 0) ? (modelData.layout.window_size[1] / modelData.layout.window_size[0]) : 0.75
+            readonly property real windowRatio: (modelData.height > 0 && modelData.width > 0) ? (modelData.height / modelData.width) : 0.75
             readonly property real targetWidth: Tokens.sizes.bar.windowPreviewSize
             readonly property real targetHeight: Math.max(50, Math.min(targetWidth * windowRatio, Tokens.sizes.bar.windowPreviewSize * 1.5))
 
@@ -148,7 +148,7 @@ RowLayout {
                             anchors.fill: parent
                             radius: Tokens.rounding.small
                                 onClicked: {
-                                    Niri.closeWindow(modelData.id);
+                                    Compositor.closeWindow(modelData.id);
                                     root.popouts.hasCurrent = false;
                                 }
                         }
@@ -173,7 +173,7 @@ RowLayout {
                         color: "transparent"
 
                         onClicked: {
-                            Niri.focusWindow(modelData.id);
+                            Compositor.focusWindow(modelData.id);
                             root.popouts.hasCurrent = false;
                         }
 
@@ -184,9 +184,8 @@ RowLayout {
 
                             SafeScreencopy {
                                 captureSource: {
-                                    if (!modelData || !modelData.wayland) return null; // qmllint disable unresolved-type
-                                    const size = modelData.layout?.window_size;
-                                    if (size && (size[0] <= 0 || size[1] <= 0)) return null;
+                                    if (!modelData || !modelData.wayland) return null; // no wayland surface handle in neutral schema
+                                    if (modelData.width <= 0 || modelData.height <= 0) return null;
                                     return modelData.wayland;
                                 }
                                 live: visible

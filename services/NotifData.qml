@@ -54,7 +54,7 @@ QtObject {
     property bool forceExpand
     property list<var> actions
 
-    readonly property bool hasFullscreen: Niri.windows.some(t => t.fullscreen) ?? false
+    readonly property bool hasFullscreen: Compositor.windows.some(t => t.fullscreen) ?? false
 
     readonly property Timer timer: Timer {
         running: true

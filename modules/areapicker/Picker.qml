@@ -18,7 +18,7 @@ MouseArea {
 
     property bool onClient
 
-    // Niri doesn't expose border/rounding config via IPC, use sensible defaults
+    // Compositor border/rounding config not exposed via IPC, use sensible defaults
     property int borderWidth: 2
     property int rounding: 8
 
@@ -38,26 +38,26 @@ MouseArea {
     property real sw: Math.abs(sx - ex)
     property real sh: Math.abs(sy - ey)
 
-    // Get windows in current workspace using Niri service
+    // Get windows in current workspace using Compositor service
     property var clients: {
-        if (!Niri.niriAvailable) return [];
-        return Niri.getActiveWorkspaceWindows().slice().sort((a, b) => {
-            const aPos = a.layout?.pos_in_scrolling_layout || [0, 0];
-            const bPos = b.layout?.pos_in_scrolling_layout || [0, 0];
-            if (aPos[0] !== bPos[0]) return aPos[0] - bPos[0];
-            return aPos[1] - bPos[1];
+        if (!Compositor.available) return [];
+        return Compositor.getActiveWorkspaceWindows().slice().sort((a, b) => {
+            const aPos = a.grid || { col: 0, row: 0 };
+            const bPos = b.grid || { col: 0, row: 0 };
+            if (aPos.col !== bPos.col) return aPos.col - bPos.col;
+            return aPos.row - bPos.row;
         });
     }
 
-    // Estimate window screen position from Niri layout data
+    // Estimate window screen position from layout grid data
     function getWindowGeometry(window) {
-        if (!window?.layout?.window_size) return null;
+        if (!window || window.width <= 0 || window.height <= 0) return null;
 
-        const size = window.layout.window_size;
-        const pos = window.layout.pos_in_scrolling_layout ?? [0, 0];
+        const size = [window.width, window.height];
+        const pos = window.grid ? [window.grid.col, window.grid.row] : [0, 0];
 
-        const focusedWindow = Niri.focusedWindow;
-        if (!focusedWindow?.layout?.pos_in_scrolling_layout) {
+        const focusedWindow = Compositor.focusedWindow;
+        if (!focusedWindow?.grid) {
             return {
                 x: (screen.width - size[0]) / 2,
                 y: (screen.height - size[1]) / 2,
@@ -66,8 +66,8 @@ MouseArea {
             };
         }
 
-        const focusedPos = focusedWindow.layout.pos_in_scrolling_layout;
-        const focusedSize = focusedWindow.layout.window_size ?? [screen.width, screen.height];
+        const focusedPos = [focusedWindow.grid.col, focusedWindow.grid.row];
+        const focusedSize = [focusedWindow.width || screen.width, focusedWindow.height || screen.height];
 
         const colOffset = pos[0] - focusedPos[0];
         const rowOffset = pos[1] - focusedPos[1];
@@ -235,7 +235,7 @@ MouseArea {
 
     // Re-check client rects when focused workspace changes
     Connections {
-        target: Niri
+        target: Compositor
 
         function onFocusedWorkspaceIdChanged(): void {
             root.checkClientRects(root.mouseX, root.mouseY);

@@ -227,7 +227,7 @@ Item {
                                 }
                                 
                                 if (modelData?.toplevels.length > 0) {
-                                    Niri.focusWindow(modelData?.toplevels[0].id);
+                                    Compositor.focusWindow(modelData?.toplevels[0].id);
                                 } else if (modelData?.entry) {
                                     // Mark as launching
                                     let newLaunching = Object.assign({}, root.launchingApps);
@@ -275,12 +275,12 @@ Item {
                     ]
 
                     property bool isActive: {
-                        const activeTop = Niri.focusedWindow;
+                        const activeTop = Compositor.focusedWindow;
                         if (!activeTop) return false;
                         
                         // Match by app_id
                         if (modelData?.appClass) {
-                            const activeClass = (activeTop.app_id || "").toLowerCase();
+                            const activeClass = (activeTop.appId || "").toLowerCase();
                             const appId = modelData?.appClass.toLowerCase();
                             if (activeClass && (activeClass === appId || activeClass.includes(appId) || appId.includes(activeClass))) {
                                 return true;
@@ -454,8 +454,8 @@ Item {
             }
         }
         
-        for (const toplevel of Niri.windows) {
-            const appClass = toplevel.app_id || "";
+        for (const toplevel of Compositor.windows) {
+            const appClass = toplevel.appId || "";
             if (!appClass) continue;
             
             let found = false;
@@ -585,7 +585,7 @@ Item {
         root.modelUpdateTrigger += 1;
     }
 
-    property var _toplevels: Niri.windows
+    property var _toplevels: Compositor.windows
 
     on_ToplevelsChanged: {
         root.rebuildModel()
@@ -600,7 +600,7 @@ Item {
         onTriggered: root.rebuildModel()
     }
 
-    property var activeTop: Niri.focusedWindow
+    property var activeTop: Compositor.focusedWindow
 
     onActiveTopChanged: {
         root.rebuildModel()

@@ -70,14 +70,13 @@ Item {
 
             captureSource: {
                 const client = root.client;
-                if (!client || !client.wayland) return null; // qmllint disable unresolved-type
-                const size = client.layout?.window_size;
-                if (size && (size[0] <= 0 || size[1] <= 0)) return null;
+                if (!client || !client.wayland) return null; // no wayland surface handle in neutral schema
+                if (client.width <= 0 || client.height <= 0) return null;
                 return client.wayland;
             }
             live: visible
 
-            constraintSize.width: (root.client && root.client.layout?.window_size && root.client.layout.window_size[1] > 0) ? parent.height * Math.min(root.screen.width / root.screen.height, root.client.layout.window_size[0] / root.client.layout.window_size[1]) : parent.height
+            constraintSize.width: (root.client && root.client.height > 0) ? parent.height * Math.min(root.screen.width / root.screen.height, root.client.width / root.client.height) : parent.height
             constraintSize.height: parent.height
         }
     }
@@ -95,10 +94,10 @@ Item {
             if (!client)
                 return Tr.tr("No active client");
 
-            const output = Niri.outputs[client.output];
-            const pos = client.layout?.pos_in_scrolling_layout;
+            const output = Compositor.getOutput(client.output);
+            const pos = client.grid;
             // TRANSLATORS: %1 = window title, %2 = monitor name, %3/%4 = column/row position
-            return Tr.tr("%1 on monitor %2 at %3, %4").arg(client.title).arg(output?.name ?? "unknown").arg(pos?.[0] ?? -1).arg(pos?.[1] ?? -1);
+            return Tr.tr("%1 on monitor %2 at %3, %4").arg(client.title).arg(output?.name ?? "unknown").arg(pos?.col ?? -1).arg(pos?.row ?? -1);
         }
     }
 }

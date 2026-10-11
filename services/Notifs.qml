@@ -23,7 +23,7 @@ Singleton {
     property bool loaded
 
     function hasFullscreen(): bool {
-        return Niri.windows.some(t => t.fullscreen) ?? false;
+        return Compositor.windows.some(t => t.fullscreen) ?? false;
     }
 
     function shouldShowPopup(): bool {

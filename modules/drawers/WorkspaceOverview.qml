@@ -56,34 +56,29 @@ Item {
                 clip: true
                 spacing: Tokens.spacing.medium
 
-                model: 10
+                model: Compositor.allWorkspaces.filter(w => w.output === root.screen.name)
 
                 delegate: Item {
                     id: wsDelegate
-                    required property int index
-                    readonly property int workspaceId: index + 1
-                    readonly property int activeWsId: {
-                        const outputWs = Niri.allWorkspaces.filter(w => w.output === root.screen.name);
-                        const focused = outputWs.find(w => w.is_focused);
-                        return focused ? focused.id : (outputWs.length > 0 ? outputWs[0].id : 1);
-                    }
-                    readonly property bool isActive: activeWsId === workspaceId
-                    
+                    required property var modelData
+                    readonly property string workspaceId: String(modelData.id ?? "")
+                    readonly property bool isActive: modelData.focused ?? false
+
                     property int activeDrags: 0
                     z: activeDrags > 0 ? 100 : 0
-                    
-                    property list<var> windows: Niri.windows.filter(t => {
-                        return t.workspace_id === workspaceId;
+
+                    property list<var> windows: Compositor.windows.filter(t => {
+                        return t.workspaceId === wsDelegate.workspaceId;
                     })
+
+                    property var screenOutput: Compositor.getOutput(root.screen.name)
+                    property bool isPortrait: screenOutput && (screenOutput.transform % 2 !== 0)
+                    property real mw: screenOutput ? (isPortrait ? screenOutput.mode.height : screenOutput.mode.width) : 1920
+                    property real mh: screenOutput ? (isPortrait ? screenOutput.mode.width : screenOutput.mode.height) : 1080
+                    property real mx: screenOutput && screenOutput.location ? screenOutput.location.x : 0
+                    property real my: screenOutput && screenOutput.location ? screenOutput.location.y : 0
                     
-                    property var niriOutput: Niri.outputs[root.screen.name] ?? null
-                    property bool isPortrait: niriOutput && (niriOutput.transform === "90" || niriOutput.transform === "270" || niriOutput.transform === 1 || niriOutput.transform === 3)
-                    property real mw: niriOutput && niriOutput.mode ? (isPortrait ? niriOutput.mode.height : niriOutput.mode.width) : 1920
-                    property real mh: niriOutput && niriOutput.mode ? (isPortrait ? niriOutput.mode.width : niriOutput.mode.height) : 1080
-                    property real mx: niriOutput && niriOutput.location ? niriOutput.location.x : 0
-                    property real my: niriOutput && niriOutput.location ? niriOutput.location.y : 0
-                    
-                    // TODO: Niri doesn't expose absolute window positions (at/size)
+                    // No absolute window positions in neutral schema
                     // Using output dimensions as fallback for workspace thumbnails
                     property real inactiveOffsetX: 0
                     property real inactiveOffsetY: 0
@@ -167,8 +162,8 @@ Item {
                         onDropped: drop => {
                             const client = drop.source;
                             if (client) {
-                                // TODO: Niri doesn't support move-to-workspace by address
-                                console.log("WorkspaceOverview: move to workspace not yet supported in Niri");
+                                // TODO: move-by-address needs a window-targeted move verb; focused-window move only for now
+                                console.log("WorkspaceOverview: drag-to-workspace not yet supported");
                             }
                         }
                     }
@@ -177,7 +172,7 @@ Item {
                         anchors.fill: parent
                         radius: Tokens.rounding.large
                         onClicked: {
-                            Niri.switchToWorkspace(workspaceId);
+                            Compositor.switchToWorkspace(wsDelegate.workspaceId);
                             screenState.workspaceDrawer = false;
                         }
                     }
@@ -194,12 +189,12 @@ Item {
                                 id: windowContainer
                                 required property var modelData
 
-                                // Niri doesn't expose absolute window positions (at/size)
-                                // Using layout.window_size for dimensions, stubbing position
+                                // No absolute window positions in neutral schema
+                                // Using width/height for dimensions, stubbing position
                                 property real rawLogicalX: 0
                                 property real rawLogicalY: 0
-                                property real rawLogicalW: modelData.layout?.window_size?.width ?? 200
-                                property real rawLogicalH: modelData.layout?.window_size?.height ?? 150
+                                property real rawLogicalW: modelData.width ?? 200
+                                property real rawLogicalH: modelData.height ?? 150
                                 
                                 property bool isDragging: dragArea.drag.active
                                 onIsDraggingChanged: {
@@ -287,7 +282,7 @@ Item {
 
                                         IconImage {
                                             anchors.centerIn: parent
-                                            source: Icons.getAppIcon(windowContainer.modelData.app_id ?? "", "image-missing")
+                                            source: Icons.getAppIcon(windowContainer.modelData.appId ?? "", "image-missing")
                                             width: 64
                                             height: 64
                                             scale: 20 / 64
@@ -336,8 +331,7 @@ Item {
                                             windowVisualProxy.x = 0;
                                             windowVisualProxy.y = 0;
                                         } else {
-                                            // TODO: Niri doesn't support focus by address
-                                            console.log("WorkspaceOverview: focus by address not yet supported in Niri");
+                                            Compositor.focusWindow(windowContainer.modelData.id);
                                             screenState.workspaceDrawer = false;
                                         }
                                         wasDragged = false;
@@ -354,7 +348,7 @@ Item {
                     StyledText {
                         id: wsIdText
                         visible: windowRepeater.count === 0
-                        text: workspaceId.toString()
+                        text: modelData.name ?? String(modelData.index ?? "")
                         font: Tokens.font.title.large
                         color: isActive ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
                         anchors.right: parent.right

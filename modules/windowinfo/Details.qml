@@ -23,7 +23,7 @@ ColumnLayout {
     }
 
     Label {
-        text: root.client?.app_id ?? root.client?.class ?? Tr.tr("No active client")
+        text: root.client?.appId ?? Tr.tr("No active client")
         color: Colours.palette.m3tertiary
 
         font: Tokens.font.body.large
@@ -54,20 +54,20 @@ ColumnLayout {
     Detail {
         icon: "location_searching"
         // TRANSLATORS: %1/%2 = column and row position in scrolling layout
-        text: Tr.tr("Position: %1, %2").arg(root.client?.layout?.pos_in_scrolling_layout?.[0] ?? -1).arg(root.client?.layout?.pos_in_scrolling_layout?.[1] ?? -1)
+        text: Tr.tr("Position: %1, %2").arg(root.client?.grid?.col ?? -1).arg(root.client?.grid?.row ?? -1)
     }
 
     Detail {
         icon: "resize"
         // TRANSLATORS: %1/%2 = width and height in pixels; the x is a multiplication sign
-        text: Tr.tr("Size: %1 x %2").arg(root.client?.layout?.window_size?.[0] ?? -1).arg(root.client?.layout?.window_size?.[1] ?? -1)
+        text: Tr.tr("Size: %1 x %2").arg(root.client?.width ?? -1).arg(root.client?.height ?? -1)
         color: Colours.palette.m3tertiary
     }
 
     Detail {
         icon: "workspaces"
         // TRANSLATORS: %1 = workspace id
-        text: Tr.tr("Workspace: %1").arg(root.client?.workspace_id ?? -1)
+        text: Tr.tr("Workspace: %1").arg(root.client?.workspaceId ?? "?")
         color: Colours.palette.m3secondary
     }
 
@@ -76,10 +76,10 @@ ColumnLayout {
         text: {
             const outputName = root.client?.output;
             if (outputName) {
-                const mon = Niri.outputs[outputName];
+                const mon = Compositor.getOutput(outputName);
                 if (mon)
                     // TRANSLATORS: %1 = monitor name, %2/%3 = x/y position in pixels
-                    return Tr.tr("Monitor: %1 at %2, %3").arg(mon.name ?? outputName).arg(mon.x ?? 0).arg(mon.y ?? 0);
+                    return Tr.tr("Monitor: %1 at %2, %3").arg(mon.name ?? outputName).arg(mon.location?.x ?? 0).arg(mon.location?.y ?? 0);
                 return Tr.tr("Monitor: %1").arg(outputName);
             }
             return Tr.tr("Monitor: unknown");
@@ -108,7 +108,7 @@ ColumnLayout {
 
     Detail {
         icon: "picture_in_picture_center"
-        text: root.client?.is_floating ? Tr.tr("Floating: on") : Tr.tr("Floating: off")
+        text: root.client?.floating ? Tr.tr("Floating: on") : Tr.tr("Floating: off")
         color: Colours.palette.m3secondary
     }
 
@@ -127,7 +127,7 @@ ColumnLayout {
 
     Detail {
         icon: "fullscreen"
-        text: root.client?.is_fullscreen ? Tr.tr("Fullscreen state: on") : Tr.tr("Fullscreen state: off")
+        text: root.client?.fullscreen ? Tr.tr("Fullscreen state: on") : Tr.tr("Fullscreen state: off")
         color: Colours.palette.m3tertiary
     }
 
