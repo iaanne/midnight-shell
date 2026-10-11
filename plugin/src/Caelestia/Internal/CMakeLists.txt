@@ -7,6 +7,8 @@ qml_module(caelestia-internal
         compositor/platform.hpp compositor/platform.cpp
         compositor/niri/niri_backend.hpp compositor/niri/niri_backend.cpp
         compositor/niri/nirisocket.hpp compositor/niri/nirisocket.cpp
+        compositor/umbriel/umbriel_backend.hpp compositor/umbriel/umbriel_backend.cpp
+        compositor/umbriel/umbrielsocket.hpp compositor/umbriel/umbrielsocket.cpp
     LIBRARIES
         Qt::Gui
         Qt::Quick

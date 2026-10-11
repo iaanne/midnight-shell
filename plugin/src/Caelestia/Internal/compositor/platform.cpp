@@ -2,6 +2,7 @@
 
 #include "backend.hpp"
 #include "niri/niri_backend.hpp"
+#include "umbriel/umbriel_backend.hpp"
 
 #include "config/rootnodes.hpp"
 #include "config/serviceconfig.hpp"
@@ -209,6 +210,8 @@ namespace caelestia {
         switch (detect()) {
         case CompositorKind::Niri:
             return std::make_unique<NiriBackend>();
+        case CompositorKind::Umbriel:
+            return std::make_unique<UmbrielBackend>();
         case CompositorKind::Unknown:
         case CompositorKind::Hyprland:
         case CompositorKind::Sway:
@@ -216,7 +219,6 @@ namespace caelestia {
         case CompositorKind::Labwc:
         case CompositorKind::Dwl:
         case CompositorKind::Kde:
-        case CompositorKind::Umbriel:
             return std::make_unique<NullBackend>(detect());
         }
         return std::make_unique<NullBackend>(CompositorKind::Unknown);
