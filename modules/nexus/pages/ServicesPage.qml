@@ -103,13 +103,20 @@ PageBase {
 
         StepperRow {
             label: Tr.tr("System stats refresh")
-            // TRANSLATORS: CPU and GPU are hardware abbreviations, leave them untranslated
+            // TRANSLATORS: CPU and GPU are hardware abbreviations, leave it untranslated
             subtext: Tr.tr("CPU, memory and GPU update interval (seconds)")
             value: GlobalConfig.dashboard.resourceUpdateInterval / 1000
             from: 0.5
             to: 10
             stepSize: 0.5
             onMoved: v => GlobalConfig.dashboard.resourceUpdateInterval = Math.round(v * 1000)
+        }
+
+        ToggleRow {
+            text: Tr.tr("Keep stats polling when closed")
+            subtext: Tr.tr("Continue updating stats after the dashboard closes so it reopens with fresh values")
+            checked: GlobalConfig.dashboard.keepResourcePollingWhenClosed
+            onToggled: GlobalConfig.dashboard.keepResourcePollingWhenClosed = checked
         }
 
         StepperRow {

@@ -14,18 +14,6 @@ Item {
 
     implicitWidth: layout.implicitWidth + layout.anchors.margins * 2
 
-    ServiceRef {
-        service: Cpu
-    }
-
-    ServiceRef {
-        service: Memory
-    }
-
-    ServiceRef {
-        service: Storage
-    }
-
     ColumnLayout {
         id: layout
 

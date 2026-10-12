@@ -76,14 +76,20 @@ ShellRoot {
     property var _pipInit: PipManager
     property var _systemTrayInit: SystemTray
 
-    // Pre-warm services to avoid cold-start lag on dashboard open
-    ServiceRef { service: Cpu }
-    ServiceRef { service: Memory }
-    ServiceRef { service: Storage }
-    ServiceRef { service: NetworkUsage }
+    // Optional pre-warm of the dashboard's resource pollers so reopening is
+    // instant even when keepAlive released the panes. Off by default: the
+    // dashboard's own shouldBeActive-gated refs (Wrapper.qml) cover the open
+    // case. Gpu is never pre-warmed — nvidia-smi polling keeps a hybrid dGPU
+    // out of D3 sleep — and Audio.cava / Audio.beatTracker would analyse audio
+    // continuously; both still cold-start on the first dashboard open.
+    Loader {
+        active: GlobalConfig.dashboard.keepResourcePollingWhenClosed
 
-    // Deliberately not pre-warmed: Gpu polls nvidia-smi every interval while
-    // referenced, which keeps a hybrid dGPU out of D3 sleep, and Audio.cava /
-    // Audio.beatTracker would analyse audio continuously. Those still cold-start
-    // on the first dashboard open that uses them.
+        sourceComponent: Item {
+            ServiceRef { service: Cpu }
+            ServiceRef { service: Memory }
+            ServiceRef { service: Storage }
+            ServiceRef { service: NetworkUsage }
+        }
+    }
 }

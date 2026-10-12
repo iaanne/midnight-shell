@@ -19,10 +19,6 @@ StyledRect {
     implicitWidth: layout.implicitWidth + Tokens.padding.extraLargeIncreased * 2
     implicitHeight: layout.implicitHeight + Tokens.padding.large * 2
 
-    ServiceRef {
-        service: Memory
-    }
-
     ColumnLayout {
         id: layout
 

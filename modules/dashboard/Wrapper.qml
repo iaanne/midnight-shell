@@ -5,6 +5,7 @@ import Quickshell
 import Caelestia
 import Caelestia.Config
 import Caelestia.I18n
+import Caelestia.Services
 import qs.components
 import qs.components.filedialog
 import qs.utils
@@ -78,6 +79,24 @@ Item {
 
     Behavior on offsetScale {
         Anim {}
+    }
+
+    // Drive the dashboard's resource pollers off actual visibility rather than
+    // keepAlive: the panes (and any ServiceRefs inside them) stay loaded after
+    // close for instant reopening, but the services must stop ticking so they
+    // don't burn CPU forever. Gpu is included here — not in shell.qml's
+    // pre-warm — so nvidia-smi only runs while you're actually looking at the
+    // dashboard, letting a hybrid dGPU sleep otherwise.
+    Loader {
+        active: root.shouldBeActive
+
+        sourceComponent: Item {
+            ServiceRef { service: Cpu }
+            ServiceRef { service: Memory }
+            ServiceRef { service: Storage }
+            ServiceRef { service: NetworkUsage }
+            ServiceRef { service: Gpu }
+        }
     }
 
     Loader {

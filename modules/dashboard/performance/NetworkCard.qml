@@ -16,10 +16,6 @@ StyledRect {
     implicitWidth: Tokens.sizes.dashboard.perfNetworkCardWidth
     implicitHeight: Tokens.sizes.dashboard.perfNetworkCardHeight
 
-    ServiceRef {
-        service: NetworkUsage
-    }
-
     ColumnLayout {
         id: layout
 

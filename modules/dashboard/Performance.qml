@@ -78,10 +78,6 @@ Item {
                         usage: Cpu.percentage
                         temperature: Cpu.temperature
                         accent: Colours.palette.m3primary
-
-                        ServiceRef {
-                            service: Cpu
-                        }
                     }
                 }
 
@@ -97,10 +93,6 @@ Item {
                         usage: Gpu.percentage
                         temperature: Gpu.temperature
                         accent: Colours.palette.m3secondary
-
-                        ServiceRef {
-                            service: Gpu
-                        }
                     }
                 }
             }
