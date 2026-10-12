@@ -47,6 +47,13 @@ Item {
     property real dragVy: 0
     property int walkTarget: -1
 
+    // The pet has no physics left to simulate: grounded, at rest, in range.
+    // physicsLoop sleeps while this holds — tick() is a provable no-op here.
+    // The position checks preserve the clamp self-heal: if the bar offsets or
+    // screen geometry change while asleep, the stale x/y fail the comparison,
+    // the loop wakes for the single tick that clamps them back, then sleeps.
+    readonly property bool physicsSettled: onGround && !dragging && !climbing && !ceilingWalk && walkTarget < 0 && y === floorY && x >= minX && x <= maxX
+
     property string currentAnim: "idle"
     property int frameIndex: 0
     property bool facingRight: true
@@ -435,7 +442,14 @@ Item {
     FrameAnimation {
         id: physicsLoop
 
-        running: true
+        // Sleep when settled (see physicsSettled): tick() does nothing in that
+        // state, and running the loop forces a fullscreen layer-surface redraw
+        // every refresh for no visual change. Every resume path — walkRandom,
+        // startClimb, hop and drag release — writes one of the properties
+        // physicsSettled reads, so the binding re-opens on its own. Qt re-seeds
+        // the elapsed timer in setRunning(), so the first frameTime after
+        // waking is ~one frame, not the accumulated sleep.
+        running: !root.physicsSettled
         onTriggered: root.tick(frameTime)
     }
 
