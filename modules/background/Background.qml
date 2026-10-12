@@ -74,11 +74,15 @@ Variants {
             }
 
 
-            Visualiser {
+            Loader {
                 anchors.fill: parent
-                screen: win.modelData
-                wallpaper: wallpaper
                 z: 2
+                active: !Config.background.visualiser.aboveWindows
+
+                sourceComponent: Visualiser {
+                    screen: win.modelData
+                    wallpaper: wallpaper
+                }
             }
         }
 

@@ -68,7 +68,7 @@ Item {
     Loader {
         asynchronous: true
         anchors.fill: parent
-        active: root.opacity > 0 && Config.background.visualiser.blur
+        active: root.opacity > 0 && Config.background.visualiser.blur && root.wallpaper !== null
 
         sourceComponent: MultiEffect {
             source: root.wallpaper

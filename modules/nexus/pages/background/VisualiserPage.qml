@@ -51,6 +51,21 @@ PageBase {
         ToggleRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
+            text: qsTr("Show above windows")
+            subtext: qsTr("Display the visualiser on a layer above windows")
+            configNode: root.targetConfig.background.visualiser
+            propertyName: "aboveWindows"
+            checked: root.targetConfig.background.visualiser.aboveWindows
+            onToggled: {
+                root.targetConfig.background.visualiser.aboveWindows = checked;
+                root.targetConfig.save();
+            }
+            enabled: root.targetConfig.background.visualiser.enabled
+        }
+
+        ToggleRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
             text: qsTr("Blur background")
             subtext: qsTr("Blur the wallpaper behind the visualiser")
             configNode: root.targetConfig.background.visualiser
@@ -60,7 +75,7 @@ PageBase {
                 root.targetConfig.background.visualiser.blur = checked;
                 root.targetConfig.save();
             }
-            enabled: root.targetConfig.background.visualiser.enabled
+            enabled: root.targetConfig.background.visualiser.enabled && !root.targetConfig.background.visualiser.aboveWindows
         }
 
         SelectRow {

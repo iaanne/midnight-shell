@@ -11,6 +11,7 @@ import qs.components
 import qs.components.containers
 import qs.services
 import qs.modules.bar
+import qs.modules.background as Background
 
 StyledWindow {
     id: root
@@ -466,6 +467,21 @@ StyledWindow {
                 panels.popouts.hasCurrent = false;
                 bar.closeTray();
             }
+        }
+    }
+
+    // Below the bar, panels and popouts (all declared later / higher z) but
+    // still on this window's Top layer, so it sits above normal windows.
+    // Loader (not just visible:) so the cava ServiceRef/Binding are torn down
+    // entirely when the feature is off — otherwise this instance would hold a
+    // second Audio.cava target alongside the inline one in Background.qml.
+    Loader {
+        anchors.fill: parent
+        active: Config.background.visualiser.enabled && Config.background.visualiser.aboveWindows
+
+        sourceComponent: Background.Visualiser {
+            screen: root.screen
+            wallpaper: null
         }
     }
 
