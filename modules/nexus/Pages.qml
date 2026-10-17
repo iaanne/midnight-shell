@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Caelestia.Config
 import qs.components
 import qs.modules.nexus
@@ -11,6 +12,21 @@ Item {
     property int lastPageIdx
     property int animOff
     property Item currentItem
+
+    LoggingCategory {
+        id: logCat
+
+        name: "caelestia.nexus"
+        defaultLogLevel: LoggingCategory.Info
+    }
+
+    // The page list and the component list are paired by position: a page added
+    // to one and not the other opens the wrong page (or the placeholder) with no
+    // other symptom, so say so instead of failing quietly.
+    Component.onCompleted: {
+        if (PageRegistry.pages.length !== PageCompRegistry.pageComps.length)
+            console.warn(logCat, `Nexus page/component registry mismatch: ${PageRegistry.pages.length} pages, ${PageCompRegistry.pageComps.length} components`);
+    }
 
     function loadPage(idx: int): void {
         if (currentItem)
