@@ -12,6 +12,7 @@ import qs.components.containers
 import qs.services
 import qs.modules.bar
 import qs.modules.background as Background
+import qs.modules.background.desktopicons as DesktopWidgets
 
 StyledWindow {
     id: root
@@ -133,7 +134,14 @@ StyledWindow {
     WlrLayershell.layer: (fsTransitionProg > 0 && contentItem.Config.general.showOverFullscreen) || (hasSpecialWorkspace && hasFullscreenOnNormalWs) ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: screenState.launcher || screenState.session || screenState.dashboard || screenState.sidebar || panels.popouts.hasCurrent ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-    mask: hasFullscreen ? emptyRegion : regions
+    // The desktop overlays below (context menus, drop menu, view options, widget
+    // gallery) live in this window, but `regions` inverts the mask over the
+    // desktop so that clicks there reach the icons on the background surface.
+    // While one of them is open the mask has to cover the whole window instead,
+    // or the menu would be click-through.
+    readonly property bool hasOpenDesktopOverlay: desktopContextMenu.expanded || desktopIconContextMenu.expanded || dropMenu.expanded || viewOptions.open || widgetGallery.open
+
+    mask: hasOpenDesktopOverlay ? fullRegion : hasFullscreen ? emptyRegion : regions
 
     BackgroundEffect.blurRegion: shellBlurActive ? blurRegionRef : null
 
@@ -164,6 +172,15 @@ StyledWindow {
             width: panels.osdWrapper.width * (1 - panels.osd.offsetScale) + panels.topMargin
             height: panels.osd.height
         }
+    }
+
+    Region {
+        id: fullRegion
+
+        x: 0
+        y: 0
+        width: root.width
+        height: root.height
     }
 
     Regions {
@@ -834,6 +851,93 @@ StyledWindow {
             popouts: panels.popouts
 
             fullscreen: root.hasFullscreen
+        }
+
+        // ---- Desktop icon/widget overlays -------------------------------
+        // Hosted here rather than in Background.qml so they draw above normal
+        // windows. DesktopIcons (in the background surface) raises these through
+        // signals because they have to land on this screen's window.
+        Connections {
+            function onOpenDesktopContextMenu(x, y, screenName) {
+                if (root.screen.name !== screenName)
+                    return;
+                desktopContextMenuAnchor.x = x;
+                desktopContextMenuAnchor.y = y;
+                // Already open: jump to the new spot and unfold again instead of
+                // closing first.
+                if (desktopContextMenu.expanded)
+                    desktopContextMenu.reopen();
+                else
+                    desktopContextMenu.expanded = true;
+            }
+
+            target: ContextMenuStore
+        }
+
+        Connections {
+            function onOpenIconContextMenu(screenName, x, y, keys, inGroup) {
+                if (root.screen.name === screenName)
+                    desktopIconContextMenu.openAt(x, y, keys, inGroup);
+            }
+
+            function onOpenDropMenu(screenName, x, y, urls, target, cell) {
+                if (root.screen.name === screenName)
+                    dropMenu.openAt(x, y, urls, target, cell);
+            }
+
+            function onViewOptionsRequested(screenName, x, y) {
+                if (root.screen.name === screenName)
+                    viewOptions.openAt(x, y);
+            }
+
+            function onAddWidgetRequested(screenName, x, y) {
+                if (root.screen.name !== screenName)
+                    return;
+                const ctrl = DesktopLayout.controllerFor(screenName);
+                widgetGallery.openAt(x, y, ctrl ? ctrl.cellAt(x, y) : null);
+            }
+
+            target: DesktopLayout
+        }
+
+        Item {
+            id: desktopContextMenuAnchor
+        }
+
+        Background.DesktopContextMenu {
+            id: desktopContextMenu
+
+            attachTo: desktopContextMenuAnchor
+            screenName: root.screen.name
+            z: 9999
+        }
+
+        Background.DesktopIconContextMenu {
+            id: desktopIconContextMenu
+
+            controller: DesktopLayout.controllerFor(root.screen.name)
+            z: 9999
+        }
+
+        DesktopWidgets.DropMenu {
+            id: dropMenu
+
+            controller: DesktopLayout.controllerFor(root.screen.name)
+            z: 9999
+        }
+
+        DesktopWidgets.ViewOptions {
+            id: viewOptions
+
+            controller: DesktopLayout.controllerFor(root.screen.name)
+            z: 10000
+        }
+
+        DesktopWidgets.WidgetGallery {
+            id: widgetGallery
+
+            controller: DesktopLayout.controllerFor(root.screen.name)
+            z: 10000
         }
     }
 

@@ -3,12 +3,28 @@ import QtQuick.Layouts
 import Caelestia.Config
 import Caelestia.I18n
 import qs.components.controls
+import qs.modules.nexus
 import qs.modules.nexus.common
 
 PageBase {
     id: root
     title: qsTr("Desktop lyrics")
     isSubPage: true
+
+    readonly property list<MenuItem> alignmentItems: [
+        MenuItem {
+            text: qsTr("Left")
+            value: 0
+        },
+        MenuItem {
+            text: qsTr("Center")
+            value: 1
+        },
+        MenuItem {
+            text: qsTr("Right")
+            value: 2
+        }
+    ]
 
     readonly property list<string> positionValues: ["top-left", "top-center", "top-right", "middle-left", "middle-center", "middle-right", "bottom-left", "bottom-center", "bottom-right"]
     readonly property list<MenuItem> positionItems: [
@@ -34,39 +50,28 @@ PageBase {
             text: qsTr("General")
         }
 
+        // "enabled" is the overlay's master switch now: the wallpaper lyrics are
+        // a widget, shown as long as one is placed on the grid.
         ToggleRow {
             first: true
             Layout.fillWidth: true
-            text: qsTr("Enable desktop lyrics")
-            configNode: root.targetConfig.background.desktopLyrics
-            propertyName: "enabled"
-            checked: root.targetConfig.background.desktopLyrics.enabled
-            onToggled: {
-                root.targetConfig.background.desktopLyrics.enabled = checked;
-                root.targetConfig.save();
-            }
-        }
-
-        ToggleRow {
-            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
-            Layout.fillWidth: true
             text: qsTr("Overlay lyrics")
-            subtext: qsTr("Render lyrics on top of all windows")
+            subtext: qsTr("Draw lyrics over every window, instead of on the wallpaper")
             configNode: root.targetConfig.background.desktopLyrics
             propertyName: "overlay"
-            checked: root.targetConfig.background.desktopLyrics.overlay
+            checked: root.targetConfig.background.desktopLyrics.enabled && root.targetConfig.background.desktopLyrics.overlay
             onToggled: {
+                root.targetConfig.background.desktopLyrics.enabled = checked;
                 root.targetConfig.background.desktopLyrics.overlay = checked;
                 root.targetConfig.save();
             }
-            enabled: root.targetConfig.background.desktopLyrics.enabled
         }
 
         ToggleRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
             text: qsTr("Auto-hide for fullscreen windows")
-            subtext: qsTr("Hide lyrics when a window is fullscreen")
+            subtext: qsTr("Hide wallpaper lyrics when a window is fullscreen")
             configNode: root.targetConfig.background.desktopLyrics
             propertyName: "autoHideFullscreen"
             checked: root.targetConfig.background.desktopLyrics.autoHideFullscreen
@@ -74,15 +79,13 @@ PageBase {
                 root.targetConfig.background.desktopLyrics.autoHideFullscreen = checked;
                 root.targetConfig.save();
             }
-            enabled: root.targetConfig.background.desktopLyrics.enabled
         }
 
         ToggleRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
-            last: true
             Layout.fillWidth: true
             text: qsTr("Auto-hide for tiled windows")
-            subtext: qsTr("Hide lyrics when tiled windows are open")
+            subtext: qsTr("Hide wallpaper lyrics when tiled windows are open")
             configNode: root.targetConfig.background.desktopLyrics
             propertyName: "autoHideTiled"
             checked: root.targetConfig.background.desktopLyrics.autoHideTiled
@@ -90,7 +93,17 @@ PageBase {
                 root.targetConfig.background.desktopLyrics.autoHideTiled = checked;
                 root.targetConfig.save();
             }
-            enabled: root.targetConfig.background.desktopLyrics.enabled
+        }
+
+        // The wallpaper lyrics are a widget now: where they sit and how big they
+        // are comes from the widget grid.
+        NavRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            last: true
+            icon: "widgets"
+            text: qsTr("Add or move the lyrics")
+            subtext: qsTr("Wallpaper lyrics live in the desktop widget grid")
+            onClicked: root.nState.currentPageIdx = PageRegistry.indexForKey("desktop")
         }
 
         SectionHeader {
@@ -125,7 +138,6 @@ PageBase {
                     root.targetConfig.background.desktopLyrics.appFilter = AppFilter.Disabled;
                 root.targetConfig.save();
             }
-            enabled: root.targetConfig.background.desktopLyrics.enabled
         }
 
         TagRow {
@@ -147,7 +159,7 @@ PageBase {
                 root.targetConfig.background.desktopLyrics.filteredApps = apps;
                 root.targetConfig.save();
             }
-            enabled: root.targetConfig.background.desktopLyrics.enabled && root.targetConfig.background.desktopLyrics.appFilter !== AppFilter.Disabled
+            enabled: root.targetConfig.background.desktopLyrics.appFilter !== AppFilter.Disabled
         }
 
         SectionHeader {
@@ -157,7 +169,23 @@ PageBase {
         SelectRow {
             first: true
             Layout.fillWidth: true
-            label: qsTr("Position")
+            label: qsTr("Alignment")
+            subtext: qsTr("Text alignment on the wallpaper and in the overlay")
+            configNode: root.targetConfig.background.desktopLyrics
+            propertyName: "alignment"
+            menuItems: root.alignmentItems
+            active: root.alignmentItems.find(i => i.value === root.targetConfig.background.desktopLyrics.alignment) ?? root.alignmentItems[1]
+            onSelected: item => {
+                root.targetConfig.background.desktopLyrics.alignment = item.value;
+                root.targetConfig.save();
+            }
+        }
+
+        SelectRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
+            label: qsTr("Overlay position")
+            subtext: qsTr("Where the overlay sits; the wallpaper widget is moved on the Desktop page")
             configNode: root.targetConfig.background.desktopLyrics
             propertyName: "position"
             menuItems: root.positionItems
@@ -175,6 +203,7 @@ PageBase {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
             label: qsTr("Scale")
+            subtext: qsTr("Multiplies the size on the wallpaper and in the overlay")
             configNode: root.targetConfig.background.desktopLyrics
             propertyName: "scale"
             value: (root.targetConfig.background.desktopLyrics.scale - 0.5) / 2.5

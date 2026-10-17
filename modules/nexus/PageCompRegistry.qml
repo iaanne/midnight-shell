@@ -69,6 +69,14 @@ QtObject {
             }
         },
         Component {
+            // Desktop
+            StackPage {
+                Component {
+                    DesktopPage {}
+                }
+            }
+        },
+        Component {
             // Shell Tokens
             StackPage {
                 Component {

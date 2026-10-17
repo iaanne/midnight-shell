@@ -10,6 +10,9 @@
 #include <qquickitemgrabresult.h>
 #include <qquickwindow.h>
 #include <qregularexpression.h>
+#include <qsavefile.h>
+#include <qstringlist.h>
+#include <qtextstream.h>
 #include <qtconcurrentrun.h>
 
 #include "util/metaenum.hpp"
@@ -152,6 +155,71 @@ bool CUtils::writeFile(const QString& path, const QString& content) {
 
 qreal CUtils::clamp(qreal value, qreal min, qreal max) {
     return qBound(min, value, max);
+}
+
+bool CUtils::setDesktopEntryKey(const QString& path, const QString& key, const QString& value) {
+    if (path.isEmpty() || key.isEmpty()) {
+        return false;
+    }
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCWarning(lcCUtils) << "setDesktopEntryKey: failed to open" << path;
+        return false;
+    }
+
+    QTextStream in(&file);
+    QStringList lines;
+    int headerIndex = -1;
+    QString currentGroup;
+    bool found = false;
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        const QString trimmed = line.trimmed();
+        if (trimmed.startsWith(QLatin1Char('['))) {
+            currentGroup = trimmed;
+            if (currentGroup == QLatin1String("[Desktop Entry]") && headerIndex == -1) {
+                headerIndex = lines.size();
+            }
+        } else if (currentGroup == QLatin1String("[Desktop Entry]")) {
+            const int eq = trimmed.indexOf(QLatin1Char('='));
+            if (eq > 0 && trimmed.left(eq).trimmed() == key) {
+                line = key + QLatin1Char('=') + value;
+                found = true;
+            }
+        }
+        lines.append(line);
+    }
+    file.close();
+
+    if (!found) {
+        if (headerIndex == -1) {
+            lines.append(QStringLiteral("[Desktop Entry]"));
+            lines.append(key + QLatin1Char('=') + value);
+        } else {
+            lines.insert(headerIndex + 1, key + QLatin1Char('=') + value);
+        }
+    }
+
+    // QSaveFile so a failed write cannot truncate the user's .desktop file.
+    QSaveFile outFile(path);
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qCWarning(lcCUtils) << "setDesktopEntryKey: failed to open for writing" << path;
+        return false;
+    }
+
+    QTextStream out(&outFile);
+    for (int i = 0; i < lines.size(); ++i) {
+        out << lines.at(i) << "\n";
+    }
+
+    if (!outFile.commit()) {
+        qCWarning(lcCUtils) << "setDesktopEntryKey: commit failed" << path;
+        return false;
+    }
+
+    return true;
 }
 
 QString CUtils::enumToString(QObject* target, const QString& property, const QVariant& value) {

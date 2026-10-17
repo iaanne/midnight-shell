@@ -20,8 +20,16 @@ Variants {
 
         screen: modelData
         name: "background"
+        isDesktopWidget: true
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: (contentItem.Config.background.wallpaperEnabled && !(wallpaper.item && wallpaper.item.weActive)) ? WlrLayer.Background : WlrLayer.Bottom
+        // Keyboard focus follows the inline rename editor. Exclusive while it is
+        // open; OnDemand otherwise so a click lands on the desktop as it would
+        // on any other surface. Niri does not hand an *unfocused* layer surface
+        // the exclusive grab, so the first click only focuses the surface — which
+        // is harmless here because every rename is already started by interacting
+        // with it (context menu, F2, or a click on the tile).
+        WlrLayershell.keyboardFocus: desktopIcons.renameActive ? WlrKeyboardFocus.Exclusive : desktopIcons.visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: contentItem.Config.background.wallpaperEnabled && !(wallpaper.item && wallpaper.item.weActive) ? "black" : "transparent"
         surfaceFormat.opaque: false
 
@@ -34,6 +42,28 @@ Variants {
             screen: win.screen
             slot: "background"
             component: win
+        }
+
+        // Empty-desktop interaction. Declared before the wallpaper/icons so the
+        // icon and widget handlers sit above it and win when they are hit.
+        TapHandler {
+            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+
+            onTapped: (eventPoint, button) => {
+                // A click anywhere cancels an in-flight rename first.
+                if (desktopIcons.renameActive)
+                    desktopIcons.renamingDelegate?.commitRename();
+                // Only the empty desktop reacts: a hit on an icon or widget is
+                // that item's own. The wallpaper gate matches DesktopIcons'
+                // own visibility, which is also off without a wallpaper.
+                const onEmptyDesktop = Config.background.wallpaperEnabled && !desktopIcons.iconAt(eventPoint.position.x, eventPoint.position.y);
+                if (button === Qt.RightButton && onEmptyDesktop)
+                    ContextMenuStore.openDesktopContextMenu(eventPoint.position.x, eventPoint.position.y, win.modelData.name);
+                else if (button === Qt.MiddleButton && onEmptyDesktop)
+                    ContextMenuStore.toggleIcons(win.modelData.name);
+                // A left click on the empty desktop only has to focus the
+                // surface, which WlrKeyboardFocus.OnDemand does on the click.
+            }
         }
 
         Item {
@@ -86,249 +116,15 @@ Variants {
             }
         }
 
-        Loader {
-            id: clockLoader
+        // Desktop icons and free-placed widgets. Supersedes the fixed-position
+        // clock/lyrics loaders that used to live here; those are widgets now,
+        // seeded from the retired config keys by ConfigMigrations.
+        DesktopIcons {
+            id: desktopIcons
 
-            readonly property int clockBarZone: Visibilities.bars.get(win.modelData.name)?.exclusiveZone ?? (Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness))
-            readonly property int clockBaseMargin: Tokens.padding.extraLargeIncreased
-
-            asynchronous: true
-            active: Config.background.desktopClock.enabled
-
-            anchors.margins: clockBaseMargin
-            anchors.leftMargin: Config.bar.position === "left" ? clockBaseMargin + clockBarZone : clockBaseMargin
-            anchors.rightMargin: Config.bar.position === "right" ? clockBaseMargin + clockBarZone : clockBaseMargin
-            anchors.topMargin: Config.bar.position === "top" ? clockBaseMargin + clockBarZone : clockBaseMargin
-            anchors.bottomMargin: Config.bar.position === "bottom" ? clockBaseMargin + clockBarZone : clockBaseMargin
-
-            anchors.horizontalCenterOffset: {
-                if (Config.bar.position === "left") return clockBarZone / 2;
-                if (Config.bar.position === "right") return -clockBarZone / 2;
-                return 0;
-            }
-            anchors.verticalCenterOffset: {
-                if (Config.bar.position === "top") return clockBarZone / 2;
-                if (Config.bar.position === "bottom") return -clockBarZone / 2;
-                return 0;
-            }
-
-            state: Config.background.desktopClock.position
-            states: [
-                State {
-                    name: "top-left"
-
-                    AnchorChanges {
-                        target: clockLoader
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                    }
-                },
-                State {
-                    name: "top-center"
-
-                    AnchorChanges {
-                        target: clockLoader
-                        anchors.top: parent.top
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                },
-                State {
-                    name: "top-right"
-
-                    AnchorChanges {
-                        target: clockLoader
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                    }
-                },
-                State {
-                    name: "middle-left"
-
-                    AnchorChanges {
-                        target: clockLoader
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                    }
-                },
-                State {
-                    name: "middle-center"
-
-                    AnchorChanges {
-                        target: clockLoader
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                },
-                State {
-                    name: "middle-right"
-
-                    AnchorChanges {
-                        target: clockLoader
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.right: parent.right
-                    }
-                },
-                State {
-                    name: "bottom-left"
-
-                    AnchorChanges {
-                        target: clockLoader
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                    }
-                },
-                State {
-                    name: "bottom-center"
-
-                    AnchorChanges {
-                        target: clockLoader
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                },
-                State {
-                    name: "bottom-right"
-
-                    AnchorChanges {
-                        target: clockLoader
-                        anchors.bottom: parent.bottom
-                        anchors.right: parent.right
-                    }
-                }
-            ]
-
-            transitions: Transition {
-                AnchorAnim {}
-            }
-
-            sourceComponent: DesktopClock {
-                wallpaper: behindClock
-                absX: clockLoader.x
-                absY: clockLoader.y
-            }
-        }
-
-        Loader {
-            id: lyricsLoader
-
-            readonly property int lyricsBarZone: Visibilities.bars.get(win.modelData.name)?.exclusiveZone ?? (Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness))
-            readonly property int lyricsBaseMargin: Tokens.padding.large * 2
-
-            asynchronous: true
-            active: Config.background.desktopLyrics.enabled && !Config.background.desktopLyrics.overlay && !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableDesktopLyrics)
-
-            anchors.margins: lyricsBaseMargin
-            anchors.leftMargin: Config.bar.position === "left" ? lyricsBaseMargin + lyricsBarZone : lyricsBaseMargin
-            anchors.rightMargin: Config.bar.position === "right" ? lyricsBaseMargin + lyricsBarZone : lyricsBaseMargin
-            anchors.topMargin: Config.bar.position === "top" ? lyricsBaseMargin + lyricsBarZone : lyricsBaseMargin
-            anchors.bottomMargin: Config.bar.position === "bottom" ? lyricsBaseMargin + lyricsBarZone : lyricsBaseMargin
-
-            anchors.horizontalCenterOffset: {
-                if (Config.bar.position === "left") return lyricsBarZone / 2;
-                if (Config.bar.position === "right") return -lyricsBarZone / 2;
-                return 0;
-            }
-            anchors.verticalCenterOffset: {
-                if (Config.bar.position === "top") return lyricsBarZone / 2;
-                if (Config.bar.position === "bottom") return -lyricsBarZone / 2;
-                return 0;
-            }
-
-            state: Config.background.desktopLyrics.position
-            states: [
-                State {
-                    name: "top-left"
-
-                    AnchorChanges {
-                        target: lyricsLoader
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                    }
-                },
-                State {
-                    name: "top-center"
-
-                    AnchorChanges {
-                        target: lyricsLoader
-                        anchors.top: parent.top
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                },
-                State {
-                    name: "top-right"
-
-                    AnchorChanges {
-                        target: lyricsLoader
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                    }
-                },
-                State {
-                    name: "middle-left"
-
-                    AnchorChanges {
-                        target: lyricsLoader
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                    }
-                },
-                State {
-                    name: "middle-center"
-
-                    AnchorChanges {
-                        target: lyricsLoader
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                },
-                State {
-                    name: "middle-right"
-
-                    AnchorChanges {
-                        target: lyricsLoader
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.right: parent.right
-                    }
-                },
-                State {
-                    name: "bottom-left"
-
-                    AnchorChanges {
-                        target: lyricsLoader
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                    }
-                },
-                State {
-                    name: "bottom-center"
-
-                    AnchorChanges {
-                        target: lyricsLoader
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                },
-                State {
-                    name: "bottom-right"
-
-                    AnchorChanges {
-                        target: lyricsLoader
-                        anchors.bottom: parent.bottom
-                        anchors.right: parent.right
-                    }
-                }
-            ]
-
-            transitions: Transition {
-                AnchorAnim {}
-            }
-
-            sourceComponent: DesktopLyrics {
-                screen: modelData
-                wallpaper: behindClock
-                absX: lyricsLoader.x
-                absY: lyricsLoader.y
-            }
+            screenData: win.modelData
+            wallpaper: behindClock
+            z: 3
         }
     }
 }

@@ -29,9 +29,13 @@ class DesktopClockShadow : public settings::ObjectNode {
 class DesktopClock : public settings::ObjectNode {
     CONFIG_NODE(DesktopClock, settings::ObjectNode)
 
-    CONFIG_PROPERTY(bool, enabled, false)
-    CONFIG_PROPERTY(qreal, scale, 1.0)
-    CONFIG_PROPERTY(QString, position, u"bottom-right"_s)
+    // "enabled" is migration input only (it decides whether an upgrading user
+    // gets a desktopClock widget) and the clock takes its size and place from
+    // the widget grid, so nothing reads "scale" or "position" any more. All
+    // three are kept for one release so existing config files parse.
+    CONFIG_PROPERTY(bool, enabled, false)          // deprecated
+    CONFIG_PROPERTY(qreal, scale, 1.0)             // deprecated, unused
+    CONFIG_PROPERTY(QString, position, u"bottom-right"_s) // deprecated, unused
     CONFIG_PROPERTY(bool, invertColors, false)
     CONFIG_SUBOBJECT(DesktopClockBackground, background)
     CONFIG_SUBOBJECT(DesktopClockShadow, shadow)
@@ -42,6 +46,7 @@ class BackgroundVisualiser : public settings::ObjectNode {
 
     CONFIG_PROPERTY(bool, enabled, false)
     CONFIG_PROPERTY(bool, autoHide, true)
+    CONFIG_PROPERTY(bool, hideOnAllMonitors, false)
     CONFIG_PROPERTY(bool, aboveWindows, false)
     CONFIG_PROPERTY(bool, blur, false)
     CONFIG_PROPERTY(QString, renderer, QStringLiteral("gpu"))
@@ -70,6 +75,9 @@ class DesktopLyricsShadow : public settings::ObjectNode {
 class DesktopLyrics : public settings::ObjectNode {
     CONFIG_NODE(DesktopLyrics, settings::ObjectNode)
 
+    // "enabled" is the overlay's master switch as well as the migration input
+    // that seeds a lyrics widget. "position" only places the overlay; "scale"
+    // and "height" size both the overlay and the wallpaper widget.
     CONFIG_PROPERTY(bool, enabled, false)
     CONFIG_PROPERTY(bool, overlay, false)
     CONFIG_PROPERTY(bool, autoHideFullscreen, true)
@@ -77,13 +85,19 @@ class DesktopLyrics : public settings::ObjectNode {
     CONFIG_PROPERTY(qreal, scale, 1.0)
     CONFIG_PROPERTY(int, height, 180)
     CONFIG_PROPERTY(int, contextLines, 1)
-    CONFIG_PROPERTY(QString, position, u"bottom-center"_s)
+    CONFIG_PROPERTY(QString, position, u"bottom-center"_s) // overlay only
     CONFIG_PROPERTY(int, alignment, 1)
     CONFIG_PROPERTY(bool, invertColors, false)
     CONFIG_ENUM_PROPERTY(AppFilter, appFilter, AppFilter::Disabled)
     CONFIG_PROPERTY(QStringList, filteredApps, { u"Spotify"_s })
     CONFIG_SUBOBJECT(DesktopLyricsBackground, background)
     CONFIG_SUBOBJECT(DesktopLyricsShadow, shadow)
+};
+
+class DesktopShapes : public settings::ObjectNode {
+    CONFIG_NODE(DesktopShapes, settings::ObjectNode)
+
+    CONFIG_PROPERTY(bool, autoHide, true)
 };
 
 class BackgroundConfig : public settings::ObjectNode {
@@ -101,8 +115,12 @@ class BackgroundConfig : public settings::ObjectNode {
     CONFIG_PROPERTY(bool, videoWallpaperPauseOnTiled, false)
     CONFIG_PROPERTY(bool, videoWallpaperPauseOnAllDisplays, false)
     CONFIG_PROPERTY(bool, videoWallpaperMuteOnMedia, false)
+    CONFIG_PROPERTY(bool, desktopIconsEnabled, true)
+    CONFIG_PROPERTY(bool, materialYouIconsEnabled, true)
+    CONFIG_PROPERTY(bool, materialYouIconsVibrant, true)
     CONFIG_SUBOBJECT(DesktopClock, desktopClock)
     CONFIG_SUBOBJECT(DesktopLyrics, desktopLyrics)
+    CONFIG_SUBOBJECT(DesktopShapes, desktopShapes)
     CONFIG_SUBOBJECT(BackgroundVisualiser, visualiser)
 };
 

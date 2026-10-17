@@ -13,6 +13,17 @@ VerticalFadeFlickable {
 
     required property NexusState nState
 
+    // The developer-only page slides into the list when developer mode is
+    // unlocked; this item and the one above it are the ones that animate.
+    // Resolved by looking the page up so inserting pages cannot move it.
+    readonly property int devPageIdx: {
+        for (let i = 0; i < PageRegistry.pages.length; i++) {
+            if (PageRegistry.pages[i].developerOnly)
+                return i;
+        }
+        return -1;
+    }
+
     topMargin: Tokens.padding.large
     bottomMargin: Tokens.padding.large
     contentHeight: content.implicitHeight
@@ -66,14 +77,14 @@ VerticalFadeFlickable {
                 property bool isUnlocking: false
 
                 Component.onCompleted: {
-                    if (modelData.originalIndex === 2 && root.nState.justUnlockedDevMode) {
+                    if (modelData.originalIndex === root.devPageIdx && root.nState.justUnlockedDevMode) {
                         animHeight = 0;
                         animSlide = 0;
                         heightAnim.start();
                         slideAnim.start();
                         isUnlocking = true;
                         unlockTimer.start();
-                    } else if (modelData.originalIndex === 1 && root.nState.justUnlockedDevMode) {
+                    } else if (modelData.originalIndex === root.devPageIdx - 1 && root.nState.justUnlockedDevMode) {
                         isUnlocking = true;
                         unlockTimer.start();
                     }
@@ -113,18 +124,18 @@ VerticalFadeFlickable {
                     const targetH = h % 2 === 0 ? h : h + 1;
                     return targetH * animHeight;
                 }
-                opacity: modelData.originalIndex === 2 ? animSlide : 1.0
+                opacity: modelData.originalIndex === root.devPageIdx ? animSlide : 1.0
 
                 transform: Translate {
-                    y: modelData.originalIndex === 2 ? (1 - item.animSlide) * -40 : 0
+                    y: modelData.originalIndex === root.devPageIdx ? (1 - item.animSlide) * -40 : 0
                 }
 
                 color: isCurrentPage ? Colours.palette.m3secondaryContainer : Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
 
-                topLeftRadius: stateLayer.pressed ? Tokens.rounding.medium : isCurrentPage ? Tokens.rounding.extraLargeIncreased : (isUnlocking && modelData.originalIndex === 2) ? Tokens.rounding.extraLarge : isCategoryStart ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
-                topRightRadius: stateLayer.pressed ? Tokens.rounding.medium : isCurrentPage ? Tokens.rounding.extraLargeIncreased : (isUnlocking && modelData.originalIndex === 2) ? Tokens.rounding.extraLarge : isCategoryStart ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
-                bottomLeftRadius: stateLayer.pressed ? Tokens.rounding.medium : isCurrentPage ? Tokens.rounding.extraLargeIncreased : (isUnlocking && modelData.originalIndex === 1) ? Tokens.rounding.extraLarge : isCategoryEnd ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
-                bottomRightRadius: stateLayer.pressed ? Tokens.rounding.medium : isCurrentPage ? Tokens.rounding.extraLargeIncreased : (isUnlocking && modelData.originalIndex === 1) ? Tokens.rounding.extraLarge : isCategoryEnd ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+                topLeftRadius: stateLayer.pressed ? Tokens.rounding.medium : isCurrentPage ? Tokens.rounding.extraLargeIncreased : (isUnlocking && modelData.originalIndex === root.devPageIdx) ? Tokens.rounding.extraLarge : isCategoryStart ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+                topRightRadius: stateLayer.pressed ? Tokens.rounding.medium : isCurrentPage ? Tokens.rounding.extraLargeIncreased : (isUnlocking && modelData.originalIndex === root.devPageIdx) ? Tokens.rounding.extraLarge : isCategoryStart ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+                bottomLeftRadius: stateLayer.pressed ? Tokens.rounding.medium : isCurrentPage ? Tokens.rounding.extraLargeIncreased : (isUnlocking && modelData.originalIndex === root.devPageIdx - 1) ? Tokens.rounding.extraLarge : isCategoryEnd ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+                bottomRightRadius: stateLayer.pressed ? Tokens.rounding.medium : isCurrentPage ? Tokens.rounding.extraLargeIncreased : (isUnlocking && modelData.originalIndex === root.devPageIdx - 1) ? Tokens.rounding.extraLarge : isCategoryEnd ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
 
                 RadiusBehavior on topLeftRadius {}
                 RadiusBehavior on topRightRadius {}
@@ -152,7 +163,7 @@ VerticalFadeFlickable {
                     anchors.margins: Tokens.padding.large
                     spacing: Tokens.spacing.medium
 
-                    opacity: modelData.originalIndex === 2 ? item.animSlide : 1.0
+                    opacity: modelData.originalIndex === root.devPageIdx ? item.animSlide : 1.0
 
                     StyledRect {
                         Layout.fillHeight: true

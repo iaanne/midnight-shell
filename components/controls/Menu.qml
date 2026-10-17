@@ -34,7 +34,33 @@ MouseArea {
     property bool expanded
     property real maxHeight: 320
 
+    // The surface the rows sit on. Exposed so callers can measure the menu
+    // before deciding which way it has to unfold.
+    readonly property alias backgroundItem: menu
+    // Drops the surface fill and its elevation, leaving the rows on whatever is
+    // behind the menu (the desktop, for the desktop context menu).
+    property bool transparentBackground: false
+    // Unfold sideways from the anchor instead of dropping down.
+    property bool revealHorizontal: false
+    // A right click repositions the menu through rightClickedAt() rather than
+    // closing it.
+    property bool rightClickReposition: false
+
+    // Set for one event loop turn by replayReveal() to re-run the unfold.
+    property bool replaying: false
+
     signal itemSelected(item: MenuItem)
+    // Right click at (x, y) in the parent's coordinates, while repositioning.
+    signal rightClickedAt(real x, real y)
+
+    // Replays the unfold animation without closing the menu. Used when the menu
+    // is re-anchored somewhere else while it is already open.
+    function replayReveal(): void {
+        if (!revealHorizontal || !expanded)
+            return;
+        replaying = true;
+        replayTimer.restart();
+    }
 
     parent: {
         let node = root.attachTo;
@@ -58,7 +84,21 @@ MouseArea {
     enabled: expanded
     hoverEnabled: expanded
     cursorShape: expanded ? Qt.ArrowCursor : undefined
-    onClicked: expanded = false
+    acceptedButtons: rightClickReposition ? Qt.LeftButton | Qt.RightButton : Qt.AllButtons
+    onClicked: mouse => {
+        if (rightClickReposition && mouse.button === Qt.RightButton) {
+            rightClickedAt(mouse.x, mouse.y);
+            return;
+        }
+        expanded = false;
+    }
+
+    Timer {
+        id: replayTimer
+
+        interval: 0
+        onTriggered: root.replaying = false
+    }
 
     opacity: expanded ? 1 : 0
 
@@ -96,17 +136,27 @@ MouseArea {
         }
 
         radius: Tokens.rounding.large
-        level: 2
+        level: root.transparentBackground ? 0 : 2
 
         implicitWidth: Math.max(200, column.implicitWidth + Tokens.padding.extraSmall * 2)
         implicitHeight: Math.min(root.maxHeight, column.implicitHeight + Tokens.padding.extraSmall * 2)
 
         transform: Scale {
-            yScale: root.expanded ? 1 : 0.1
+            id: menuScale
+
+            // 0 collapsed, 1 unfolded; flipping it is what the Behavior animates,
+            // so reveal direction only decides which axis is scaled.
+            property real progress: (root.expanded && !root.replaying) ? 1 : 0
+
+            xScale: root.revealHorizontal ? progress : 1
+            yScale: root.revealHorizontal ? 1 : 0.1 + 0.9 * progress
+            origin.x: root.thisSideX === Menu.Right ? menu.width : 0
             origin.y: root.thisSideY === Menu.Bottom ? menu.height : 0
 
-            Behavior on yScale {
-                Anim {}
+            Behavior on progress {
+                Anim {
+                    type: root.revealHorizontal ? Anim.FastEffects : Anim.DefaultEffects
+                }
             }
         }
 
@@ -119,7 +169,7 @@ MouseArea {
         StyledRect {
             anchors.fill: parent
             radius: parent.radius
-            color: Colours.palette.m3surfaceContainerLow
+            color: root.transparentBackground ? "transparent" : Colours.palette.m3surfaceContainerLow
 
             Flickable {
                 id: flickable

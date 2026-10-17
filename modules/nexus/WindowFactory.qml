@@ -26,6 +26,10 @@ Singleton {
         FloatingWindow {
             id: win
 
+            // Page to open on, set through the props of create() so callers can
+            // deep link (the desktop context menu does).
+            property int initialPageIdx: 0
+
             readonly property bool shellBlurActive: GlobalConfig.appearance.blur.enabled
                 && !GlobalConfig.appearance.pitchBlack
                 && win.color.a < 1.0
@@ -67,6 +71,9 @@ Singleton {
                 anchors.fill: parent
                 nState.screen: win.screen
                 nState.isWindow: true
+                // Navigating breaks this binding, which is what we want: the
+                // deep link only decides the page the window opens on.
+                nState.currentPageIdx: Math.max(0, Math.min(PageRegistry.pages.length - 1, win.initialPageIdx))
                 onClose: win.destroy()
             }
 

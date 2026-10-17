@@ -2,25 +2,13 @@ import QtQuick
 import QtQuick.Layouts
 import Caelestia.Config
 import qs.components.controls
+import qs.modules.nexus
 import qs.modules.nexus.common
 
 PageBase {
     id: root
     title: qsTr("Desktop clock")
     isSubPage: true
-
-    readonly property list<string> positionValues: ["top-left", "top-center", "top-right", "middle-left", "middle-center", "middle-right", "bottom-left", "bottom-center", "bottom-right"]
-    readonly property list<MenuItem> positionItems: [
-        MenuItem { text: qsTr("Top Left") },
-        MenuItem { text: qsTr("Top Center") },
-        MenuItem { text: qsTr("Top Right") },
-        MenuItem { text: qsTr("Middle Left") },
-        MenuItem { text: qsTr("Middle Center") },
-        MenuItem { text: qsTr("Middle Right") },
-        MenuItem { text: qsTr("Bottom Left") },
-        MenuItem { text: qsTr("Bottom Center") },
-        MenuItem { text: qsTr("Bottom Right") }
-    ]
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -33,57 +21,23 @@ PageBase {
             text: qsTr("General")
         }
 
-        ToggleRow {
+        // The clock is a widget now: where it sits and how big it is comes from
+        // the widget grid, so this page only styles it.
+        NavRow {
             first: true
             last: true
-            Layout.fillWidth: true
-            text: qsTr("Enable desktop clock")
-            configNode: root.targetConfig.background.desktopClock
-            propertyName: "enabled"
-            checked: root.targetConfig.background.desktopClock.enabled
-            onToggled: {
-                root.targetConfig.background.desktopClock.enabled = checked;
-                root.targetConfig.save();
-            }
+            icon: "widgets"
+            text: qsTr("Add or move the clock")
+            subtext: qsTr("The clock lives in the desktop widget grid")
+            onClicked: root.nState.currentPageIdx = PageRegistry.indexForKey("desktop")
         }
 
         SectionHeader {
             text: qsTr("Appearance")
         }
 
-        SelectRow {
-            first: true
-            Layout.fillWidth: true
-            label: qsTr("Position")
-            configNode: root.targetConfig.background.desktopClock
-            propertyName: "position"
-            menuItems: root.positionItems
-            active: root.positionItems[root.positionValues.indexOf(root.targetConfig.background.desktopClock.position)] ?? root.positionItems[4]
-            onSelected: item => {
-                let idx = root.positionItems.indexOf(item);
-                if (idx !== -1) {
-                    root.targetConfig.background.desktopClock.position = root.positionValues[idx];
-                    root.targetConfig.save();
-                }
-            }
-        }
-
-        SliderRow {
-            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
-            Layout.fillWidth: true
-            label: qsTr("Scale")
-            configNode: root.targetConfig.background.desktopClock
-            propertyName: "scale"
-            value: (root.targetConfig.background.desktopClock.scale - 0.5) / 2.5
-            valueLabel: (0.5 + value * 2.5).toFixed(1) + "x"
-            onMoved: v => {
-                root.targetConfig.background.desktopClock.scale = 0.5 + v * 2.5;
-                root.targetConfig.save();
-            }
-        }
-
         ToggleRow {
-            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            first: true
             last: true
             Layout.fillWidth: true
             text: qsTr("Invert colors")

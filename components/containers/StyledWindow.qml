@@ -6,8 +6,12 @@ import Caelestia.Config
 PanelWindow {
     // qmllint enable uncreatable-type
     required property string name
+    // Marks a surface as part of the desktop widget layer (the wallpaper,
+    // desktop icons and desktop widgets). Those get a namespace of their own so
+    // compositor layer rules can target the desktop without catching panels.
+    property bool isDesktopWidget: false
 
-    WlrLayershell.namespace: `caelestia-${name}`
+    WlrLayershell.namespace: isDesktopWidget ? "caelestia-desktop" : `caelestia-${name}`
     color: "transparent"
 
     contentItem.Config.screen: screen.name

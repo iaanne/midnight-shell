@@ -14,15 +14,26 @@ import qs.services
 Item {
     id: root
 
-    required property ShellScreen screen
-    required property Item wallpaper
-    required property real absX
-    required property real absY
+    // Frame/controller come from the widget host (BigItem); they keep their
+    // null defaults so the same component still serves the lyrics overlay
+    // window, which supplies screen/wallpaper/absX/absY directly.
+    property var frame: null
+    property var controller: null
+    property ShellScreen screen: controller?.screenData ?? null
+    property Item wallpaper: controller?.wallpaper ?? null
+    property real absX: (controller?.gridOrigin.x ?? 0) + (frame?.x ?? 0)
+    property real absY: (controller?.gridOrigin.y ?? 0) + (frame?.y ?? 0)
 
-    property real lyricsScale: Config.background.desktopLyrics.scale
+    // Scale to the frame it was given, times the user's own scale, which stays
+    // a multiplier on top of the automatic fit.
+    readonly property real gridScale: frame ? Math.min(frame.width / 350, frame.height / 180) : 1
+    property real lyricsScale: Math.max(0.5, gridScale) * Config.background.desktopLyrics.scale
     readonly property bool bgEnabled: Config.background.desktopLyrics.background.enabled
     readonly property bool blurEnabled: bgEnabled && Config.background.desktopLyrics.background.blur && !GameMode.enabled
     readonly property bool invertColors: Config.background.desktopLyrics.invertColors
+    // Was a gate on the fixed-position loader in Background.qml; it has to live
+    // here now that the lyrics are a widget.
+    readonly property bool gameModeBlocked: GameMode.enabled && GlobalConfig.utilities.gameMode.disableDesktopLyrics
     readonly property bool useLightSet: Colours.light ? !invertColors : invertColors
     readonly property color safePrimary: useLightSet ? Colours.palette.m3primaryContainer : Colours.palette.m3primary
     readonly property color safeSecondary: useLightSet ? Colours.palette.m3secondaryContainer : Colours.palette.m3secondary
@@ -109,7 +120,7 @@ Item {
     implicitWidth: 350 * root.lyricsScale
     implicitHeight: Config.background.desktopLyrics.height * root.lyricsScale
 
-    opacity: (((root.hasLyrics && root.hasText) || Lyrics.loading) && !root.shouldHide && root.appFilterActive) ? 1 : 0
+    opacity: (((root.hasLyrics && root.hasText) || Lyrics.loading) && !root.shouldHide && !root.gameModeBlocked && root.appFilterActive) ? 1 : 0
     visible: opacity > 0
 
     Behavior on opacity {

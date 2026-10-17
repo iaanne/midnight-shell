@@ -32,6 +32,11 @@ public:
     Q_INVOKABLE static QString readFile(const QString& path);
     Q_INVOKABLE static bool writeFile(const QString& path, const QString& content);
 
+    // Sets (or appends) `key=value` inside the [Desktop Entry] group of a
+    // .desktop file, preserving every other line. Returns false on any I/O
+    // failure, including a failed atomic commit.
+    Q_INVOKABLE static bool setDesktopEntryKey(const QString& path, const QString& key, const QString& value);
+
     Q_INVOKABLE static QString enumToString(QObject* target, const QString& property, const QVariant& value = {});
 
     Q_INVOKABLE static QQuickItem* findChild(QQuickItem* root, const QString& name);

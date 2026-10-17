@@ -13,6 +13,8 @@ Scope {
         Players;
         Brightness;
         Weather.reload();
+        // Runs the desktop-widget migration before anything lays out the grid.
+        ConfigMigrations;
 
         if (GlobalConfig.utilities.vpn.enabled)
             VPN;

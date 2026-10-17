@@ -1,11 +1,18 @@
 import QtQuick.Layouts
 import Caelestia.Config
+import qs.services
 import qs.modules.nexus.common
 
 PageBase {
     id: root
 
     title: qsTr("Background elements")
+
+    // The clock and the wallpaper lyrics are widgets now, so what used to be
+    // "Enabled" is whether one is placed on the grid.
+    readonly property bool clockPlaced: Object.keys(DesktopLayout.widgets).some(id => DesktopLayout.widgets[id].type === "desktopClock")
+    readonly property bool lyricsPlaced: Object.keys(DesktopLayout.widgets).some(id => DesktopLayout.widgets[id].type === "lyrics")
+    readonly property bool lyricsOverlay: root.targetConfig.background.desktopLyrics.enabled && root.targetConfig.background.desktopLyrics.overlay
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -17,14 +24,14 @@ PageBase {
             first: true
             icon: "schedule"
             text: qsTr("Desktop clock")
-            subtext: root.targetConfig.background.desktopClock.enabled ? qsTr("Enabled") : qsTr("Disabled")
+            subtext: root.clockPlaced ? qsTr("Shown on the desktop") : qsTr("Hidden")
             onClicked: root.nState.openSubPage(1)
         }
 
         NavRow {
             icon: "lyrics"
             text: qsTr("Desktop lyrics")
-            subtext: root.targetConfig.background.desktopLyrics.enabled ? qsTr("Enabled") : qsTr("Disabled")
+            subtext: root.lyricsOverlay ? qsTr("Shown as an overlay") : root.lyricsPlaced ? qsTr("Shown on the desktop") : qsTr("Hidden")
             onClicked: root.nState.openSubPage(2)
         }
 
