@@ -16,6 +16,7 @@ QtObject {
     property string wallpaperFilterType: "all"
     property BluetoothDevice selectedBtDevice
     property DesktopEntry selectedApp
+    property string selectedWidgetKey: ""
     property int editingVpnIndex: -1
     property string selectedNetworkSsid
     property string selectedEthernetInterface

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import "desktopicons"
 import "desktopicons/LayoutEngine.js" as Engine
+import "desktopicons/WidgetDragMath.js" as WidgetDragMath
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
@@ -72,7 +73,8 @@ Item {
     property Item renamingDelegate: null
     readonly property bool renameActive: renamingDelegate !== null
     readonly property var displayPositions: previewPositions ?? DesktopLayout.positions
-    // Key -> { w, h } for everything bigger than one cell: large folders and widgets.
+    // Key -> { w, h } for the large folders on the icon grid. Widgets are not
+    // here: they live on their own free layer and never occupy a cell.
     readonly property var spans: {
         const out = {};
         for (const id in DesktopLayout.groups) {
@@ -80,8 +82,6 @@ Item {
             if (s && (s.w > 1 || s.h > 1))
                 out[DesktopLayout.groupKey(id)] = s;
         }
-        for (const id in DesktopLayout.widgets)
-            out[DesktopLayout.widgetKey(id)] = DesktopLayout.widgets[id].size;
         return out;
     }
     // Sizes shown while a resize is being dragged.
@@ -105,7 +105,7 @@ Item {
     }
 
     function isBigKey(key: string): bool {
-        return isWidgetKey(key) || (isGroupKey(key) && key in spans);
+        return isGroupKey(key) && key in spans;
     }
 
     function spanOf(key: string): var {
@@ -141,8 +141,10 @@ Item {
     }
 
     function labelOf(key: string): string {
-        if (isWidgetKey(key))
-            return widgetCatalog.info(widgetOf(key)?.type ?? "").name;
+        if (isWidgetKey(key)) {
+            const w = widgetOf(key);
+            return widgetCatalog.variantInfo(w?.type ?? "", w?.variant ?? "").name;
+        }
         if (isGroupKey(key))
             return groupOf(key)?.name ?? "";
         return entryOf(key)?.displayName ?? nameOf(key);
@@ -166,17 +168,27 @@ Item {
             out.push(entriesModel.get(i).key);
         for (let i = 0; i < bigModel.count; i++)
             out.push(bigModel.get(i).key);
+        for (let i = 0; i < widgetModel.count; i++)
+            out.push(widgetModel.get(i).key);
         return out;
     }
 
-    // Positions of whatever the keyboard and selection act on right now.
+    // Positions of whatever the keyboard and selection act on right now. Widgets
+    // contribute their rounded cell so they can be selected, but they never feed
+    // the icon grid's collision: see `contextPositionsTopLevel`.
     function contextPositions(): var {
         if (openGroupId !== "")
             return groupPopup.memberPositions();
         const out = {};
-        for (const key of topLevelKeys())
-            if (DesktopLayout.positions[key] && (iconsEnabled || isWidgetKey(key)))
+        for (const key of topLevelKeys()) {
+            if (isWidgetKey(key)) {
+                const w = widgetOf(key);
+                if (w)
+                    out[key] = { col: Math.round(w.x), row: Math.round(w.y) };
+            } else if (DesktopLayout.positions[key] && iconsEnabled) {
                 out[key] = DesktopLayout.positions[key];
+            }
+        }
         return out;
     }
 
@@ -185,14 +197,22 @@ Item {
             return false;
         if (openGroupId !== "")
             return true;
+        // Widgets sit above the icon grid; a hit on one is not the empty desktop.
+        for (const id in DesktopLayout.widgets) {
+            const w = DesktopLayout.widgets[id];
+            const ww = w.w * cellWidth;
+            const wh = w.h * cellHeight;
+            const cx = gridItem.x + w.x * cellWidth + ww / 2;
+            const cy = gridItem.y + w.y * cellHeight + wh / 2;
+            const s = (w.scale ?? 1) * DesktopLayout.widgetsScale;
+            if (Math.abs(x - cx) <= ww * s / 2 && Math.abs(y - cy) <= wh * s / 2)
+                return true;
+        }
+        if (!iconsEnabled)
+            return false;
         const c = Math.floor((x - gridItem.x) / cellWidth);
         const r = Math.floor((y - gridItem.y) / cellHeight);
-        const occ = cellOccupant(c, r, []);
-        if (occ === "")
-            return false;
-        if (!iconsEnabled && !isWidgetKey(occ))
-            return false;
-        return true;
+        return cellOccupant(c, r, []) !== "";
     }
 
     function cellOccupant(col: int, row: int, exclude: var): string {
@@ -291,8 +311,6 @@ Item {
                 desired.push(DesktopLayout.fileKey(name));
         for (const id in groups)
             desired.push(DesktopLayout.groupKey(id));
-        for (const id in DesktopLayout.widgets)
-            desired.push(DesktopLayout.widgetKey(id));
 
         const old = DesktopLayout.positions;
         const positions = {};
@@ -359,6 +377,8 @@ Item {
         // Large folders and widgets get their own delegate type.
         mirror(entriesModel, desired.filter(k => !isBigKey(k)));
         mirror(bigModel, desired.filter(k => isBigKey(k)));
+        // Widgets are their own layer, keyed by id and ordered by their own z.
+        mirror(widgetModel, Object.keys(DesktopLayout.widgets).map(DesktopLayout.widgetKey));
 
         if (openGroupId !== "" && !groups[openGroupId] && folderReady)
             closeGroup();
@@ -774,7 +794,16 @@ Item {
         previewPositions = null;
     }
 
-    function resizeItem(key: string, w: int, h: int): void {
+    function resizeItem(key: string, w: real, h: real): void {
+        // Widgets are free-placed: just record the new size.
+        if (isWidgetKey(key)) {
+            const id = nameOf(key);
+            if (!DesktopLayout.widgets[id])
+                return;
+            DesktopLayout.setWidgetGeometry(id, { w, h });
+            Qt.callLater(syncEntries);
+            return;
+        }
         endResizePreview();
         const pos = DesktopLayout.positions[key];
         if (!pos)
@@ -787,13 +816,6 @@ Item {
                 return;
             groups[id] = Object.assign({}, groups[id], { size: { w, h } });
             DesktopLayout.setGroups(groups);
-        } else if (isWidgetKey(key)) {
-            const id = nameOf(key);
-            const widgets = Object.assign({}, DesktopLayout.widgets);
-            if (!widgets[id])
-                return;
-            widgets[id] = Object.assign({}, widgets[id], { size: { w, h } });
-            DesktopLayout.setWidgets(widgets);
         }
         DesktopLayout.setPositions(next);
         Qt.callLater(syncEntries);
@@ -804,19 +826,101 @@ Item {
         if (!info.type)
             return;
         const id = DesktopLayout.newGroupId();
-        const key = DesktopLayout.widgetKey(id);
+        const w = info.size.w;
+        const h = info.size.h;
+        // Land where the menu asked, or the middle of the grid, then clamp so
+        // the whole widget fits.
+        const x = cell ? Math.max(0, Math.min(cols - w, cell.col)) : Math.max(0, Math.round((cols - w) / 2));
+        const y = cell ? Math.max(0, Math.min(rows - h, cell.row)) : Math.max(0, Math.round((rows - h) / 2));
         const widgets = Object.assign({}, DesktopLayout.widgets);
-        widgets[id] = { type, size: { w: info.size.w, h: info.size.h }, config: Object.assign({}, info.config ?? {}) };
-        const occ = Engine.occupancy(contextPositionsTopLevel(), null, spans);
-        const at = cell ? Engine.nearestFree(occ, cell.col, cell.row, cols, rows, info.size) : Engine.firstFree(occ, cols, rows, info.size);
-        const positions = Object.assign({}, DesktopLayout.positions);
-        positions[key] = at;
+        widgets[id] = {
+            type,
+            variant: "",
+            x,
+            y,
+            w,
+            h,
+            scale: 1,
+            z: Object.keys(widgets).length,
+            overlap: "inherit",
+            config: Object.assign({}, info.config ?? {})
+        };
         DesktopLayout.setWidgets(widgets);
-        DesktopLayout.setPositions(DesktopLayout.autoArrange ? Object.assign(positions, arranged(Object.assign(contextPositionsTopLevel(), { [key]: at }), [])) : positions);
         Qt.callLater(() => {
             syncEntries();
-            setSelection([key]);
+            setSelection([DesktopLayout.widgetKey(id)]);
         });
+    }
+
+    // ---- Free widget geometry ---------------------------------------------
+
+    // Snap a value (in cells) to the placement step. `snap` is false when the
+    // user asked for a continuous value and the per-gesture step should not
+    // apply; "free" placement never snaps.
+    function snapCell(value: real, snap: bool): real {
+        if (!snap || DesktopLayout.widgetPlacement === "free")
+            return value;
+        const step = DesktopLayout.widgetPlacement === "grid" ? 1 : DesktopLayout.snapStep;
+        return WidgetDragMath.quantize(value, step);
+    }
+
+    function widgetMinMax(type: string, variant: string): var {
+        const info = widgetCatalog.variantInfo(type, variant);
+        return { min: info.min ?? { w: 1, h: 1 }, max: info.max ?? { w: 8, h: 8 } };
+    }
+
+    // Called by a widget's move handle with the new top-left in pixels.
+    function commitWidgetMove(key: string, px: real, py: real): void {
+        const id = nameOf(key);
+        const w = DesktopLayout.widgets[id];
+        if (!w)
+            return;
+        let x = snapCell(px / cellWidth, true);
+        let y = snapCell(py / cellHeight, true);
+        // Keep the whole widget on the grid so it can always be grabbed again.
+        x = Math.max(0, Math.min(Math.max(0, cols - w.w), x));
+        y = Math.max(0, Math.min(Math.max(0, rows - w.h), y));
+        // Overlap off (and not per-widget "allow"): drop onto a free icon cell.
+        if (!DesktopLayout.allowOverlap && (w.overlap ?? "inherit") !== "allow") {
+            const occ = Engine.occupancy(contextPositionsTopLevel(), null, spans);
+            const cell = Engine.nearestFree(occ, Math.round(x), Math.round(y), cols, rows, { w: Math.max(1, Math.round(w.w)), h: Math.max(1, Math.round(w.h)) });
+            x = cell.col;
+            y = cell.row;
+        }
+        DesktopLayout.bringToFront(id);
+        DesktopLayout.setWidgetGeometry(id, { x, y });
+    }
+
+    // Called by a widget's resize grip with the new size in pixels.
+    function commitWidgetResize(key: string, px: real, py: real): void {
+        const id = nameOf(key);
+        const w = DesktopLayout.widgets[id];
+        if (!w)
+            return;
+        const mm = widgetMinMax(w.type, w.variant ?? "");
+        let nw = snapCell(px / cellWidth, DesktopLayout.snapResize);
+        let nh = snapCell(py / cellHeight, DesktopLayout.snapResize);
+        nw = Math.max(mm.min.w, Math.min(mm.max.w, nw));
+        nh = Math.max(mm.min.h, Math.min(mm.max.h, nh));
+        DesktopLayout.setWidgetGeometry(id, { w: nw, h: nh });
+    }
+
+    function setWidgetScale(key: string, scale: real): void {
+        const id = nameOf(key);
+        if (DesktopLayout.widgets[id])
+            DesktopLayout.setWidgetScale(id, scale);
+    }
+
+    function setWidgetVariant(key: string, variant: string): void {
+        const id = nameOf(key);
+        if (DesktopLayout.widgets[id])
+            DesktopLayout.setWidgetVariant(id, variant);
+    }
+
+    function setWidgetOverlap(key: string, mode: string): void {
+        const id = nameOf(key);
+        if (DesktopLayout.widgets[id])
+            DesktopLayout.setWidgetOverlap(id, mode);
     }
 
     function removeWidgets(keys: var): void {
@@ -1402,6 +1506,10 @@ Item {
         id: bigModel
     }
 
+    ListModel {
+        id: widgetModel
+    }
+
     Process {
         id: fileOpProc
 
@@ -1587,14 +1695,8 @@ wl-paste --no-newline --type text/uri-list`]
             BigItem {
                 id: big
 
-                readonly property var pos: root.displayPositions[key] ?? DesktopLayout.positions[key] ?? null
-
                 controller: root
-                visible: (!isGroup || root.iconsEnabled) && pos !== null
-                width: span.w * root.cellWidth
-                height: span.h * root.cellHeight
-                x: (pos?.col ?? 0) * root.cellWidth
-                y: (pos?.row ?? 0) * root.cellHeight
+                visible: root.iconsEnabled && pos !== null
                 z: resizing ? 3 : 0
                 selected: root.selection[key] === true && root.openGroupId === ""
                 focusVisible: root.keyboardActive && root.focusKey === key && root.openGroupId === ""
@@ -1620,22 +1722,47 @@ wl-paste --no-newline --type text/uri-list`]
                 onDoubleClicked: mouse => root.tileDoubleClicked(key, mouse)
                 onContextMenuRequested: (x, y) => root.tileContextMenu(key, x, y)
                 onDragRequested: root.beginDrag(key)
+            }
+        }
 
-                Behavior on x {
-                    Anim {}
+        // The free widget layer. Each widget carries its own geometry, scale and
+        // stacking order, so it never touches the icon grid.
+        Repeater {
+            model: widgetModel
+
+            BigItem {
+                id: widgetBig
+
+                controller: root
+                visible: widget !== null
+                z: 10 + (widget?.z ?? 0)
+                selected: root.selection[key] === true && root.openGroupId === ""
+                focusVisible: root.keyboardActive && root.focusKey === key && root.openGroupId === ""
+                dimmed: root.dragGroup === "" && root.dragKeys.indexOf(key) !== -1
+                mergeTarget: root.mergeKey === key
+
+                Component.onCompleted: {
+                    const next = Object.assign({}, root.tiles);
+                    next[key] = widgetBig;
+                    root.tiles = next;
+                }
+                Component.onDestruction: {
+                    if (root.tiles[key] === widgetBig) {
+                        const next = Object.assign({}, root.tiles);
+                        delete next[key];
+                        root.tiles = next;
+                    }
+                    root.finishRename(widgetBig);
                 }
 
-                Behavior on y {
-                    Anim {}
+                onPressed: mouse => {
+                    root.tilePressed(key, mouse);
+                    if (mouse.button === Qt.LeftButton)
+                        DesktopLayout.bringToFront(root.nameOf(key));
                 }
-
-                Behavior on width {
-                    Anim {}
-                }
-
-                Behavior on height {
-                    Anim {}
-                }
+                onClicked: mouse => root.tileClicked(key, mouse)
+                onDoubleClicked: mouse => root.tileDoubleClicked(key, mouse)
+                onContextMenuRequested: (x, y) => root.tileContextMenu(key, x, y)
             }
         }
 

@@ -41,53 +41,39 @@ PageBase {
         return out;
     }
 
-    // Keep in sync with WidgetCatalog.types; the gallery on the desktop is the
-    // picker for everything that needs placing by hand.
-    readonly property list<MenuItem> widgetItems: [
+    // Built from the catalog so the menu and the desktop gallery never drift.
+    property var addItems: []
+
+    readonly property list<MenuItem> placementItems: [
         MenuItem {
-            text: Tr.tr("Clock & Weather")
-            icon: "partly_cloudy_day"
-            value: "clock"
+            text: Tr.tr("Snap to a step")
+            icon: "grid_on"
+            value: "snap"
         },
         MenuItem {
-            text: Tr.tr("Desktop Clock")
-            icon: "schedule"
-            value: "desktopClock"
+            text: Tr.tr("Whole cells")
+            icon: "grid_4x4"
+            value: "grid"
         },
         MenuItem {
-            text: Tr.tr("Media")
-            icon: "music_note"
-            value: "media"
+            text: Tr.tr("Free")
+            icon: "open_with"
+            value: "free"
+        }
+    ]
+
+    readonly property list<MenuItem> snapStepItems: [
+        MenuItem {
+            text: Tr.tr("Quarter cell")
+            value: 0.25
         },
         MenuItem {
-            text: Tr.tr("Media Shapes")
-            icon: "graphic_eq"
-            value: "shapes"
+            text: Tr.tr("Half cell")
+            value: 0.5
         },
         MenuItem {
-            text: Tr.tr("Desktop Lyrics")
-            icon: "lyrics"
-            value: "lyrics"
-        },
-        MenuItem {
-            text: Tr.tr("System Monitor")
-            icon: "monitoring"
-            value: "system"
-        },
-        MenuItem {
-            text: Tr.tr("Calendar")
-            icon: "calendar_month"
-            value: "calendar"
-        },
-        MenuItem {
-            text: Tr.tr("Note")
-            icon: "sticky_note_2"
-            value: "note"
-        },
-        MenuItem {
-            text: Tr.tr("Folder View")
-            icon: "folder_open"
-            value: "folder"
+            text: Tr.tr("Whole cell")
+            value: 1
         }
     ]
 
@@ -133,6 +119,24 @@ PageBase {
         root.controller?.addWidget(type, null);
     }
 
+    // Build the Add widget menu from the catalog, once.
+    function rebuildAddItems(): void {
+        const items = [];
+        for (const t of root.catalog.types)
+            items.push(addItemComp.createObject(root, {
+                text: t.name,
+                icon: t.icon,
+                value: t.type
+            }));
+        root.addItems = items;
+    }
+
+    // Open the per-widget config page for a placed widget.
+    function openWidget(widget: var): void {
+        root.nState.selectedWidgetKey = widget.id;
+        root.nState.openSubPage(1);
+    }
+
     function removeWidget(key: string): void {
         root.controller?.removeWidgets([key]);
     }
@@ -142,6 +146,8 @@ PageBase {
         const info = root.catalog.info(widget.type);
         root.controller?.resizeItem(widget.key, info.size.w, info.size.h);
     }
+
+    Component.onCompleted: root.rebuildAddItems()
 
     title: Tr.tr("Desktop")
 
@@ -252,6 +258,71 @@ PageBase {
         }
 
         SectionHeader {
+            text: Tr.tr("Widget placement")
+        }
+
+        SelectRow {
+            first: true
+            Layout.fillWidth: true
+            label: Tr.tr("Positioning")
+            subtext: Tr.tr("How freely widgets can be placed on the desktop")
+            menuItems: root.placementItems
+            active: root.placementItems.find(i => i.value === DesktopLayout.widgetPlacement) ?? root.placementItems[0]
+            onSelected: item => DesktopLayout.setWidgetPlacement(item.value)
+        }
+
+        SelectRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
+            visible: DesktopLayout.widgetPlacement === "snap"
+            label: Tr.tr("Snap step")
+            subtext: Tr.tr("How finely a widget moves while dragging")
+            menuItems: root.snapStepItems
+            active: root.snapStepItems.find(i => i.value === DesktopLayout.snapStep) ?? root.snapStepItems[1]
+            onSelected: item => DesktopLayout.setSnapStep(item.value)
+        }
+
+        ToggleRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
+            visible: DesktopLayout.widgetPlacement !== "free"
+            text: Tr.tr("Snap while resizing")
+            subtext: Tr.tr("The resize handle follows the same step")
+            checked: DesktopLayout.snapResize
+            onToggled: DesktopLayout.setSnapResize(checked)
+        }
+
+        ToggleRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
+            text: Tr.tr("Allow widgets over icons")
+            subtext: Tr.tr("Off keeps widgets on the free cells of the icon grid")
+            checked: DesktopLayout.allowOverlap
+            onToggled: DesktopLayout.setAllowOverlap(checked)
+        }
+
+        SliderRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
+            label: Tr.tr("Widget size")
+            subtext: Tr.tr("Scales every widget; individual widgets can differ")
+            value: DesktopLayout.widgetsScale
+            valueLabel: Math.round(DesktopLayout.widgetsScale * 100) + "%"
+            from: 0.5
+            to: 2
+            onMoved: value => DesktopLayout.setWidgetsScale(value)
+        }
+
+        RowButton {
+            last: true
+            icon: "align_horizontal_center"
+            text: Tr.tr("Tidy widgets")
+            subtext: Tr.tr("Snap every widget to the current step")
+            enabled: DesktopLayout.widgetPlacement !== "free"
+            onClicked: DesktopLayout.snapWidgets()
+        }
+
+        SectionHeader {
             text: Tr.tr("Widgets")
         }
 
@@ -276,11 +347,13 @@ PageBase {
                 anchors.right: widgetList.list.contentItem.right
                 anchors.fill: undefined
                 implicitHeight: widgetRowLayout.implicitHeight + widgetRowLayout.anchors.margins * 2
-                // No row action, so no pointing hand; only the buttons answer.
-                cursorShape: Qt.ArrowCursor
+                // The row opens the widget's own settings; the buttons still
+                // answer their own clicks.
+                cursorShape: Qt.PointingHandCursor
                 radius: Tokens.rounding.extraSmall
                 topLeftRadius: index === 0 ? Tokens.rounding.extraLarge : radius
                 topRightRadius: index === 0 ? Tokens.rounding.extraLarge : radius
+                onClicked: root.openWidget(widgetRow.modelData)
 
                 RowLayout {
                     id: widgetRowLayout
@@ -331,7 +404,7 @@ PageBase {
             Layout.fillWidth: true
             label: Tr.tr("Add widget")
             subtext: Tr.tr("Placed in the first free spot; drag it on the desktop to move it")
-            menuItems: root.widgetItems
+            menuItems: root.addItems
             fallbackText: Tr.tr("Add")
             fallbackIcon: "add"
             onSelected: item => root.addWidget(item.value)
@@ -350,6 +423,13 @@ PageBase {
                 root.targetConfig.background.desktopShapes.autoHide = checked;
                 root.targetConfig.save();
             }
+        }
+
+        // MenuItem.text is required, so it has to be set at creation.
+        Component {
+            id: addItemComp
+
+            MenuItem {}
         }
     }
 }

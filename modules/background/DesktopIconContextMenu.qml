@@ -6,6 +6,7 @@ import Caelestia.Config
 import qs.components.controls as Controls
 import qs.services
 import qs.utils
+import qs.modules.nexus
 
 Controls.Menu {
     id: root
@@ -155,6 +156,20 @@ Controls.Menu {
             icon: "delete"
             visible: root.hasFiles
             onClicked: root.controller?.trashKeys(root.keys)
+        },
+        Controls.MenuItem {
+            text: qsTr("Widget Settings...")
+            icon: "tune"
+            visible: root.single && root.firstWidget !== null
+            onClicked: WindowFactory.create(null, {
+                initialPageIdx: PageRegistry.indexForKey("desktop")
+            })
+        },
+        Controls.MenuItem {
+            text: qsTr("Bring Widget to Front")
+            icon: "flip_to_front"
+            visible: root.single && root.firstWidget !== null
+            onClicked: DesktopLayout.bringToFront(root.controller?.nameOf(root.firstKey) ?? "")
         },
         Controls.MenuItem {
             text: root.keys.filter(k => root.controller?.isWidgetKey(k) ?? false).length > 1 ? qsTr("Remove Widgets") : qsTr("Remove Widget")
