@@ -158,6 +158,12 @@ class LauncherTokens : public settings::ObjectNode {
     CONFIG_PROPERTY(int, wallpaperHeight, 200)
     CONFIG_PROPERTY(int, windowSwitcherWidth, 300)
     CONFIG_PROPERTY(int, windowSwitcherHeight, 220)
+    CONFIG_PROPERTY(int, browseWidth, 784)
+    CONFIG_PROPERTY(int, browseHeight, 640)
+    CONFIG_PROPERTY(int, browseMinHeight, 420)
+    CONFIG_PROPERTY(int, browseSidebarWidth, 200)
+    CONFIG_PROPERTY(int, browseTileWidth, 96)
+    CONFIG_PROPERTY(int, browseTileHeight, 92)
 };
 
 class NotifsTokens : public settings::ObjectNode {

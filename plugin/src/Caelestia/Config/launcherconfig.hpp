@@ -7,6 +7,7 @@
 #include "settings/objectnode.hpp"
 #include "util/i18n.hpp"
 #include "common.hpp"
+#include "enums.hpp"
 
 namespace caelestia::config {
 
@@ -46,6 +47,9 @@ class LauncherConfig : public settings::ObjectNode {
     CONFIG_PROPERTY(int, maxShown, 7)
     CONFIG_PROPERTY(int, maxWallpapers, 9)
     CONFIG_PROPERTY(bool, animateSize, true)
+    CONFIG_PROPERTY(bool, showBrowseOnEmpty, true)
+    CONFIG_ENUM_PROPERTY(LauncherBrowseLayout, browseLayout, LauncherBrowseLayout::Default)
+    CONFIG_ENUM_PROPERTY(LauncherNameOverflow, nameOverflow, LauncherNameOverflow::Tooltip)
     CONFIG_GLOBAL_PROPERTY(QString, specialPrefix, u"@"_s)
     CONFIG_GLOBAL_PROPERTY(QString, actionPrefix, u">"_s)
     CONFIG_GLOBAL_PROPERTY(bool, enableDangerousActions, false)

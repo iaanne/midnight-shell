@@ -10,6 +10,18 @@ Searcher {
 
     property string keyMode: ""
 
+    /// Every visible app in alphabetical order (used by the app browser layouts).
+    property alias alphaApps: appDb.alphaApps
+
+    /// Every visible desktop entry in AppDb order (favourites, then frequency, then name).
+    function allApps(): list<var> {
+        const res = [];
+        const apps = root.list;
+        for (let i = 0; i < apps.length; i++)
+            res.push(apps[i].entry);
+        return res;
+    }
+
     function launch(entry: DesktopEntry): void {
         appDb.incrementFrequency(entry.id);
 

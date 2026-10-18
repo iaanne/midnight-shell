@@ -15,6 +15,7 @@ Item {
     required property ScreenState screenState
     required property var panels
     required property real maxHeight
+    required property real maxWidth
 
     readonly property int padding: Tokens.padding.large
     readonly property int rounding: Tokens.rounding.extraLarge
@@ -39,6 +40,7 @@ Item {
             screenState: root.screenState
             panels: root.panels
             maxHeight: root.maxHeight - search.implicitHeight - root.padding * 3
+            maxWidth: root.maxWidth - root.padding * 2
             search: search
             padding: root.padding
             rounding: root.rounding
@@ -62,6 +64,11 @@ Item {
         placeholderText: Tr.tr("Type \"%1\" for commands").arg(GlobalConfig.launcher.actionPrefix)
 
         onAccepted: {
+            if (list.showAppsBrowser) {
+                list.currentList?.activateCurrent();
+                return;
+            }
+
             const currentItem = list.currentList?.currentItem;
             if (currentItem) {
                 if (list.showWallpapers) {
@@ -86,9 +93,29 @@ Item {
         Keys.onUpPressed: list.currentList?.decrementCurrentIndex()
         Keys.onDownPressed: list.currentList?.incrementCurrentIndex()
 
+        Keys.onLeftPressed: event => {
+            if (list.showAppsBrowser) {
+                list.currentList?.moveLeft();
+                event.accepted = true;
+            }
+        }
+
+        Keys.onRightPressed: event => {
+            if (list.showAppsBrowser) {
+                list.currentList?.moveRight();
+                event.accepted = true;
+            }
+        }
+
         Keys.onEscapePressed: root.screenState.launcher = false
 
         Keys.onPressed: event => {
+            if (list.showAppsBrowser && event.key === Qt.Key_Tab) {
+                list.currentList?.toggleFocus();
+                event.accepted = true;
+                return;
+            }
+
             if (!GlobalConfig.launcher.vimKeybinds)
                 return;
 

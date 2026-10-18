@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import Caelestia.Config
 import Caelestia.I18n
+import qs.components.controls
 import qs.modules.nexus.common
 
 PageBase {
@@ -98,6 +99,84 @@ PageBase {
             checked: root.targetConfig.launcher.animateSize
             onToggled: {
                 root.targetConfig.launcher.animateSize = checked;
+                root.targetConfig.save();
+            }
+        }
+
+        ToggleRow {
+            text: Tr.tr("Browse apps when search is empty")
+            subtext: Tr.tr("Show the categorized app browser when the search field is empty")
+            configNode: root.targetConfig.launcher
+            propertyName: "showBrowseOnEmpty"
+            checked: root.targetConfig.launcher.showBrowseOnEmpty
+            onToggled: {
+                root.targetConfig.launcher.showBrowseOnEmpty = checked;
+                root.targetConfig.save();
+            }
+        }
+
+        SelectRow {
+            Layout.fillWidth: true
+            label: Tr.tr("App browser layout")
+            subtext: Tr.tr("Default: a sidebar of categories next to the apps. Simple: a full-width grid with favourites on top. Compact: a vertical list like search results")
+            configNode: root.targetConfig.launcher
+            propertyName: "browseLayout"
+            menuItems: [
+                MenuItem {
+                    text: qsTr("Default")
+                },
+                MenuItem {
+                    text: qsTr("Simple")
+                },
+                MenuItem {
+                    text: qsTr("Compact")
+                }
+            ]
+            active: {
+                switch (root.targetConfig.launcher.browseLayout) {
+                case LauncherBrowseLayout.Simple:
+                    return menuItems[1];
+                case LauncherBrowseLayout.Compact:
+                    return menuItems[2];
+                default:
+                    return menuItems[0];
+                }
+            }
+            onSelected: item => {
+                root.targetConfig.launcher.browseLayout = item === menuItems[1] ? LauncherBrowseLayout.Simple : (item === menuItems[2] ? LauncherBrowseLayout.Compact : LauncherBrowseLayout.Default);
+                root.targetConfig.save();
+            }
+        }
+
+        SelectRow {
+            Layout.fillWidth: true
+            label: Tr.tr("Truncated app names")
+            subtext: Tr.tr("How to show app names too long for a tile: a hover tooltip, shrinking the icon for a second line, or flipping the icon away to show the full name")
+            configNode: root.targetConfig.launcher
+            propertyName: "nameOverflow"
+            menuItems: [
+                MenuItem {
+                    text: qsTr("Tooltip")
+                },
+                MenuItem {
+                    text: qsTr("Shrink icon")
+                },
+                MenuItem {
+                    text: qsTr("Flip icon")
+                }
+            ]
+            active: {
+                switch (root.targetConfig.launcher.nameOverflow) {
+                case LauncherNameOverflow.Shrink:
+                    return menuItems[1];
+                case LauncherNameOverflow.Flip:
+                    return menuItems[2];
+                default:
+                    return menuItems[0];
+                }
+            }
+            onSelected: item => {
+                root.targetConfig.launcher.nameOverflow = item === menuItems[1] ? LauncherNameOverflow.Shrink : (item === menuItems[2] ? LauncherNameOverflow.Flip : LauncherNameOverflow.Tooltip);
                 root.targetConfig.save();
             }
         }

@@ -14,6 +14,7 @@ Item {
     required property var panels
 
     readonly property bool shouldBeActive: screenState.launcher && Config.launcher.enabled
+    readonly property real maxWidth: screen.width
 
     readonly property real maxHeight: {
         let max = screen.height - Config.border.thickness * 2 + Tokens.padding.extraLarge;
@@ -67,6 +68,7 @@ Item {
             screenState: root.screenState
             panels: root.panels
             maxHeight: root.maxHeight
+            maxWidth: root.maxWidth
         }
     }
 }

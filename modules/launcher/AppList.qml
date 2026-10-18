@@ -16,7 +16,10 @@ StyledListView {
     required property SearchBar search
     required property ScreenState screenState
 
-    property string displayText
+    // Seeded from the live text so the model and state agree on the very first
+    // frame; Component.onCompleted then detaches the binding, leaving the
+    // debounce/transition logic to drive it from there on.
+    property string displayText: root.search.text
 
     readonly property string requestedState: stateForText(search.text)
     readonly property string displayState: stateForText(displayText)

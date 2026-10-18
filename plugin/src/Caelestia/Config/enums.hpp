@@ -28,6 +28,8 @@ ENUM(TemperatureUnit, Auto, Celsius, Fahrenheit, Kelvin)
 ENUM(DataUnit, Binary, Decimal)
 ENUM(AppFilter, Disabled, Whitelist, Blacklist)
 ENUM(ClockFormat, Auto, TwelveHour, TwentyFourHour)
+ENUM(LauncherBrowseLayout, Default, Simple, Compact)
+ENUM(LauncherNameOverflow, Tooltip, Shrink, Flip)
 
 #undef ENUM
 

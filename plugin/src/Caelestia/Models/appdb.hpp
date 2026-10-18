@@ -6,6 +6,7 @@
 #include <qqmllist.h>
 #include <qregularexpression.h>
 #include <qtimer.h>
+#include <qvariantlist.h>
 
 namespace caelestia::models {
 
@@ -69,6 +70,7 @@ class AppDb : public QObject {
     Q_PROPERTY(QObjectList entries READ entries WRITE setEntries NOTIFY entriesChanged REQUIRED)
     Q_PROPERTY(QStringList favouriteApps READ favouriteApps WRITE setFavouriteApps NOTIFY favouriteAppsChanged REQUIRED)
     Q_PROPERTY(QQmlListProperty<caelestia::models::AppEntry> apps READ apps NOTIFY appsChanged)
+    Q_PROPERTY(QVariantList alphaApps READ alphaApps NOTIFY appsChanged)
 
 public:
     explicit AppDb(QObject* parent = nullptr);
@@ -85,6 +87,8 @@ public:
     void setFavouriteApps(const QStringList& favApps);
 
     [[nodiscard]] QQmlListProperty<AppEntry> apps();
+
+    [[nodiscard]] QVariantList alphaApps() const;
 
     Q_INVOKABLE void incrementFrequency(const QString& id);
 
@@ -104,6 +108,7 @@ private:
     QList<QRegularExpression> m_favouriteAppsRegex; // pre-regexified m_favouriteApps list
     QHash<QString, AppEntry*> m_apps;
     mutable QList<AppEntry*> m_sortedApps;
+    mutable QVariantList m_alphaApps;
 
     static QString regexifyString(const QString& original);
     QList<AppEntry*>& getSortedApps() const;

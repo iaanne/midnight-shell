@@ -253,7 +253,21 @@ QList<AppEntry*>& AppDb::getSortedApps() const {
             return a->frequency() > b->frequency();
         return a->name().localeAwareCompare(b->name()) < 0;
     });
+
+    QList<AppEntry*> alphaApps = m_sortedApps;
+    std::ranges::sort(alphaApps, [](AppEntry* a, AppEntry* b) {
+        return a->name().localeAwareCompare(b->name()) < 0;
+    });
+    m_alphaApps.clear();
+    m_alphaApps.reserve(alphaApps.size());
+    for (auto* const app : std::as_const(alphaApps))
+        m_alphaApps.append(QVariant::fromValue(app->entry()));
+
     return m_sortedApps;
+}
+
+QVariantList AppDb::alphaApps() const {
+    return m_alphaApps;
 }
 
 bool AppDb::isFavourite(const AppEntry* app) const {

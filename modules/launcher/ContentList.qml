@@ -18,6 +18,7 @@ Item {
     required property ScreenState screenState
     required property var panels
     required property real maxHeight
+    required property real maxWidth
     required property SearchBar search
     required property int padding
     required property int rounding
@@ -39,7 +40,8 @@ Item {
     readonly property bool showWindowSwitcher: search.text.startsWith(`${GlobalConfig.launcher.actionPrefix}windows `) || search.text === `${GlobalConfig.launcher.actionPrefix}windows`
     readonly property bool showKeybinds: Keybinds.available && (search.text.startsWith(`${GlobalConfig.launcher.actionPrefix}keybinds `) || search.text === `${GlobalConfig.launcher.actionPrefix}keybinds`)
     readonly property bool showAnimations: search.text.startsWith(`${GlobalConfig.launcher.actionPrefix}animations `) || search.text === `${GlobalConfig.launcher.actionPrefix}animations`
-    readonly property var currentList: showWallpapers ? wallpaperList.item : (showWindowSwitcher ? windowSwitcherList.item : (showAnimations ? animationsList.item : (showKeybinds ? keybindsList.item : appList.item)))
+    readonly property bool showAppsBrowser: state === "apps" && !root.search.text && Config.launcher.showBrowseOnEmpty
+    readonly property var currentList: showWallpapers ? wallpaperList.item : (showWindowSwitcher ? windowSwitcherList.item : (showAnimations ? animationsList.item : (showKeybinds ? keybindsList.item : (showAppsBrowser ? browser.item : appList.item))))
 
     property string currentWallpaperTab: "Main"
 
@@ -104,12 +106,8 @@ Item {
             }
             PropertyChanges {
                 target: root
-                implicitWidth: root.Tokens.sizes.launcher.itemWidth
-                implicitHeight: Math.min(root.maxHeight, appList.implicitHeight > 0 ? appList.implicitHeight : empty.implicitHeight)
-            }
-            PropertyChanges {
-                target: appList
-                active: true
+                implicitWidth: root.showAppsBrowser ? browser.implicitWidth : root.Tokens.sizes.launcher.itemWidth
+                implicitHeight: root.showAppsBrowser ? (Config.launcher.browseLayout === LauncherBrowseLayout.Compact ? Math.min(root.maxHeight, browser.implicitHeight) : Math.min(root.maxHeight, Math.max(root.Tokens.sizes.launcher.browseMinHeight, Math.min(browser.implicitHeight, root.Tokens.sizes.launcher.browseHeight)))) : Math.min(root.maxHeight, appList.implicitHeight > 0 ? appList.implicitHeight : empty.implicitHeight)
             }
 
         },
@@ -213,7 +211,7 @@ Item {
     Loader {
         id: appList
 
-        active: false
+        active: root.state === "apps" && !root.showAppsBrowser
         visible: active
 
         anchors.fill: parent
@@ -223,6 +221,27 @@ Item {
 
             search: root.search
             screenState: root.screenState
+        }
+    }
+
+    Loader {
+        id: browser
+
+        active: root.state === "apps"
+        visible: root.showAppsBrowser
+        opacity: root.showAppsBrowser ? 1 : 0
+
+        anchors.fill: parent
+
+        sourceComponent: AppBrowser {
+            screenState: root.screenState
+            maxWidth: root.maxWidth
+        }
+
+        Behavior on opacity {
+            Anim {
+                type: Anim.DefaultEffects
+            }
         }
     }
 
@@ -419,8 +438,8 @@ Item {
     Row {
         id: empty
 
-        opacity: root.currentList?.count === 0 ? 1 : 0
-        scale: root.currentList?.count === 0 ? 1 : 0.5
+        opacity: (!root.showAppsBrowser && root.currentList?.count === 0) ? 1 : 0
+        scale: (!root.showAppsBrowser && root.currentList?.count === 0) ? 1 : 0.5
 
         spacing: Tokens.spacing.medium
         padding: Tokens.padding.large
