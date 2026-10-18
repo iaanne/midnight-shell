@@ -20,16 +20,17 @@ Variants {
 
         screen: modelData
         name: "background"
-        isDesktopWidget: true
+        // Wallpaper only. The interactive desktop (file icons, large folders and
+        // free-placed widgets) lives in DesktopSurface.qml, on its own surface,
+        // because compositors back the stationary desktop wallpaper with a
+        // "backdrop" placement (Niri's place-within-backdrop) and backdrop
+        // surfaces deliberately receive no input. Splitting them keeps the
+        // wallpaper stationary *and* the icons clickable. See DesktopSurface.qml.
+        //
+        // The namespace stays "caelestia-background" (i.e. no isDesktopWidget),
+        // which is what backdrop layer rules are expected to match.
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: (contentItem.Config.background.wallpaperEnabled && !(wallpaper.item && wallpaper.item.weActive)) ? WlrLayer.Background : WlrLayer.Bottom
-        // Keyboard focus follows the inline rename editor. Exclusive while it is
-        // open; OnDemand otherwise so a click lands on the desktop as it would
-        // on any other surface. Niri does not hand an *unfocused* layer surface
-        // the exclusive grab, so the first click only focuses the surface — which
-        // is harmless here because every rename is already started by interacting
-        // with it (context menu, F2, or a click on the tile).
-        WlrLayershell.keyboardFocus: desktopIcons.renameActive ? WlrKeyboardFocus.Exclusive : desktopIcons.visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: contentItem.Config.background.wallpaperEnabled && !(wallpaper.item && wallpaper.item.weActive) ? "black" : "transparent"
         surfaceFormat.opaque: false
 
@@ -44,30 +45,12 @@ Variants {
             component: win
         }
 
-        // Empty-desktop interaction. Declared before the wallpaper/icons so the
-        // icon and widget handlers sit above it and win when they are hit.
-        TapHandler {
-            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-
-            onTapped: (eventPoint, button) => {
-                // A click anywhere cancels an in-flight rename first.
-                if (desktopIcons.renameActive)
-                    desktopIcons.renamingDelegate?.commitRename();
-                // Only the empty desktop reacts: a hit on an icon or widget is
-                // that item's own. The wallpaper gate matches DesktopIcons'
-                // own visibility, which is also off without a wallpaper.
-                const onEmptyDesktop = Config.background.wallpaperEnabled && !desktopIcons.iconAt(eventPoint.position.x, eventPoint.position.y);
-                if (button === Qt.RightButton && onEmptyDesktop)
-                    ContextMenuStore.openDesktopContextMenu(eventPoint.position.x, eventPoint.position.y, win.modelData.name);
-                else if (button === Qt.MiddleButton && onEmptyDesktop)
-                    ContextMenuStore.toggleIcons(win.modelData.name);
-                // A left click on the empty desktop only has to focus the
-                // surface, which WlrKeyboardFocus.OnDemand does on the click.
-            }
-        }
+        // Empty-desktop interaction (the right/middle-click handler and the
+        // keyboard-focus policy) moved to DesktopSurface.qml, which owns the
+        // icon and widget surface this handler used to sit above.
 
         Item {
-            id: behindClock
+            id: wallpaperLayer
 
             anchors.fill: parent
 
@@ -114,17 +97,6 @@ Variants {
                     wallpaper: wallpaper
                 }
             }
-        }
-
-        // Desktop icons and free-placed widgets. Supersedes the fixed-position
-        // clock/lyrics loaders that used to live here; those are widgets now,
-        // seeded from the retired config keys by ConfigMigrations.
-        DesktopIcons {
-            id: desktopIcons
-
-            screenData: win.modelData
-            wallpaper: behindClock
-            z: 3
         }
     }
 }

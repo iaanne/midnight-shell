@@ -38,6 +38,7 @@ ShellRoot {
     ServiceLoader {}
 
     Background {}
+    DesktopSurface {}
     DesktopLyricsOverlay {}
     BadAppleOverlay {}
 
