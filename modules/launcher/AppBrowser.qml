@@ -34,12 +34,22 @@ Item {
         root.browser?.decrementCurrentIndex();
     }
 
-    function moveLeft(): void {
-        root.browser?.moveLeft();
+    function moveLeft(wrap): void {
+        root.browser?.moveLeft(wrap);
     }
 
-    function moveRight(): void {
-        root.browser?.moveRight();
+    function moveRight(wrap): void {
+        root.browser?.moveRight(wrap);
+    }
+
+    function nextCategory(): void {
+        if (typeof root.browser?.nextCategory === "function")
+            root.browser.nextCategory();
+    }
+
+    function prevCategory(): void {
+        if (typeof root.browser?.prevCategory === "function")
+            root.browser.prevCategory();
     }
 
     function toggleFocus(): void {

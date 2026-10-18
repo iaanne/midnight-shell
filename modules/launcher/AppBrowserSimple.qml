@@ -108,11 +108,21 @@ Item {
         root.moveBy(-root.columns);
     }
 
-    function moveLeft(): void {
+    function moveLeft(wrap: bool): void {
+        if (wrap && root.count > 0) {
+            root.currentIndex = (Math.max(0, root.currentIndex) - 1 + root.count) % root.count;
+            root.ensureVisible();
+            return;
+        }
         root.moveBy(-1);
     }
 
-    function moveRight(): void {
+    function moveRight(wrap: bool): void {
+        if (wrap && root.count > 0) {
+            root.currentIndex = (Math.max(0, root.currentIndex) + 1) % root.count;
+            root.ensureVisible();
+            return;
+        }
         root.moveBy(1);
     }
 

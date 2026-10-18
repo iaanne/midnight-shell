@@ -20,6 +20,29 @@ Item {
     readonly property int padding: Tokens.padding.large
     readonly property int rounding: Tokens.rounding.extraLarge
 
+    function vimHorizontal(delta: int): void {
+        if (list.showAppsBrowser) {
+            if (delta < 0)
+                list.currentList?.moveLeft(true);
+            else
+                list.currentList?.moveRight(true);
+        } else if (list.showWallpapers || list.showWindowSwitcher) {
+            if (delta < 0)
+                list.currentList?.decrementCurrentIndex();
+            else
+                list.currentList?.incrementCurrentIndex();
+        }
+    }
+
+    function vimCategory(delta: int): void {
+        if (!list.showAppsBrowser)
+            return;
+        if (delta < 0)
+            list.currentList?.prevCategory();
+        else
+            list.currentList?.nextCategory();
+    }
+
     implicitWidth: listWrapper.width + padding * 2
     implicitHeight: search.height + listWrapper.height + padding + search.anchors.bottomMargin
 
@@ -95,14 +118,14 @@ Item {
 
         Keys.onLeftPressed: event => {
             if (list.showAppsBrowser) {
-                list.currentList?.moveLeft();
+                list.currentList?.moveLeft(false);
                 event.accepted = true;
             }
         }
 
         Keys.onRightPressed: event => {
             if (list.showAppsBrowser) {
-                list.currentList?.moveRight();
+                list.currentList?.moveRight(false);
                 event.accepted = true;
             }
         }
@@ -120,7 +143,21 @@ Item {
                 return;
 
             if (event.modifiers & Qt.ControlModifier) {
-                if (event.key === Qt.Key_J || event.key === Qt.Key_N) {
+                if (event.modifiers & Qt.ShiftModifier) {
+                    if (event.key === Qt.Key_H || event.key === Qt.Key_K) {
+                        root.vimCategory(-1);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_L || event.key === Qt.Key_J) {
+                        root.vimCategory(1);
+                        event.accepted = true;
+                    }
+                } else if (event.key === Qt.Key_H) {
+                    root.vimHorizontal(-1);
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_L) {
+                    root.vimHorizontal(1);
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_J || event.key === Qt.Key_N) {
                     list.currentList?.incrementCurrentIndex();
                     event.accepted = true;
                 } else if (event.key === Qt.Key_K || event.key === Qt.Key_P) {

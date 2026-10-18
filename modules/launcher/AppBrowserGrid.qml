@@ -84,20 +84,47 @@ Item {
             grid.moveCurrentIndexUp();
     }
 
-    function moveLeft(): void {
+    function moveLeft(wrap: bool): void {
         if (root.sidebarFocused)
             return;
+        if (wrap && grid.count > 0) {
+            grid.currentIndex = (grid.currentIndex - 1 + grid.count) % grid.count;
+            grid.positionViewAtIndex(grid.currentIndex, GridView.Contain);
+            return;
+        }
         const before = grid.currentIndex;
         grid.moveCurrentIndexLeft();
         if (grid.currentIndex === before)
             root.sidebarFocused = true;
     }
 
-    function moveRight(): void {
-        if (root.sidebarFocused)
+    function moveRight(wrap: bool): void {
+        if (root.sidebarFocused) {
             root.selectCategory(sidebar.currentItem?.modelData?.id ?? "favorites");
-        else
-            grid.moveCurrentIndexRight();
+            return;
+        }
+        if (wrap && grid.count > 0) {
+            grid.currentIndex = (grid.currentIndex + 1) % grid.count;
+            grid.positionViewAtIndex(grid.currentIndex, GridView.Contain);
+            return;
+        }
+        grid.moveCurrentIndexRight();
+    }
+
+    function cycleCategory(delta: int): void {
+        if (root.visibleCategories.length === 0)
+            return;
+        const idx = root.visibleCategories.findIndex(d => d.id === root.currentCategory);
+        const next = ((idx < 0 ? 0 : idx) + delta + root.visibleCategories.length) % root.visibleCategories.length;
+        root.selectCategory(root.visibleCategories[next].id);
+    }
+
+    function nextCategory(): void {
+        root.cycleCategory(1);
+    }
+
+    function prevCategory(): void {
+        root.cycleCategory(-1);
     }
 
     function toggleFocus(): void {

@@ -67,9 +67,9 @@ StyledListView {
         root.currentIndex = index;
     }
 
-    function moveLeft(): void {}
+    function moveLeft(wrap: bool): void {}
 
-    function moveRight(): void {}
+    function moveRight(wrap: bool): void {}
 
     function toggleFocus(): void {
         root.activateCurrent();
