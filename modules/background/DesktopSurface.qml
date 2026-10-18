@@ -100,9 +100,10 @@ Variants {
             screenData: win.modelData
             // The frosted cards of large items sample the wallpaper with an
             // in-scene ShaderEffectSource, which cannot span surfaces. With null
-            // that loader stays inactive and the cards render unfrosted; a
-            // compositor blur gives them a backdrop instead, e.g. for Niri:
-            //   layer-rule { match namespace="caelestia-desktop"; background-effect { blur true } }
+            // that loader stays inactive and the cards render unfrosted; see the
+            // runbook (§0.7) before trying a compositor blur instead — this
+            // surface covers the whole output, so a blur that ignores the
+            // surface's alpha would blur the whole wallpaper, not just the cards.
             wallpaper: null
             z: 3
         }
