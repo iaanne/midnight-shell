@@ -13,6 +13,7 @@ LazyLoader {
     property list<string> cwd: ["Home"]
     property string filterLabel: Tr.tr("All files")
     property list<string> filters: ["*"]
+    property bool selectFolder: false
     property string title: Tr.tr("Select a file")
 
     signal accepted(path: string)
@@ -35,14 +36,29 @@ LazyLoader {
         property list<string> cwd: loader.cwd
         property string filterLabel: loader.filterLabel
         property list<string> filters: loader.filters
+        property bool selectFolder: loader.selectFolder
 
+        // In folder mode the button is always live: it picks the highlighted
+        // folder, or the folder we are currently inside.
         readonly property bool selectionValid: {
             const file = folderContents.currentItem?.modelData;
+            if (selectFolder)
+                return true;
             return (file && !file.isDir && (filters.includes("*") || filters.some(filter => filter.toLowerCase() === file.suffix.toLowerCase()))) ?? false;
         }
 
         function accepted(path: string): void {
             loader.accepted(path);
+        }
+
+        function accept(): void {
+            const file = folderContents.currentItem?.modelData;
+            if (selectFolder) {
+                accepted(file?.isDir ? file.path : folderContents.currentPath);
+                return;
+            }
+            if (file && !file.isDir)
+                accepted(file.path);
         }
 
         function rejected(): void {

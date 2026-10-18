@@ -20,6 +20,14 @@ Item {
     required property var dialog
     readonly property FileEntry currentItem: view.currentItem as FileEntry
 
+    // The folder being browsed, as a plain path (no file:// prefix). In folder
+    // mode this is what "Select" picks when no folder row is highlighted.
+    readonly property string currentPath: {
+        if (root.dialog.cwd[0] === "Home")
+            return Paths.home + `/${root.dialog.cwd.slice(1).join("/")}`;
+        return root.dialog.cwd.join("/");
+    }
+
     StyledRect {
         anchors.fill: parent
         color: Colours.tPalette.m3surfaceContainer
@@ -90,11 +98,11 @@ Item {
 
         Keys.onReturnPressed: {
             if (root.dialog.selectionValid)
-                root.dialog.accepted((currentItem as FileEntry).modelData.path);
+                root.dialog.accept();
         }
         Keys.onEnterPressed: {
             if (root.dialog.selectionValid)
-                root.dialog.accepted((currentItem as FileEntry).modelData.path);
+                root.dialog.accept();
         }
 
         StyledScrollBar.vertical: StyledScrollBar {
@@ -102,12 +110,7 @@ Item {
         }
 
         model: FileSystemModel {
-            path: {
-                if (root.dialog.cwd[0] === "Home")
-                    return Paths.home + `/${root.dialog.cwd.slice(1).join("/")}`;
-                else
-                    return root.dialog.cwd.join("/");
-            }
+            path: root.currentPath
             onPathChanged: view.currentIndex = -1
         }
 
@@ -175,8 +178,10 @@ Item {
             onDoubleClicked: {
                 if (item.modelData.isDir)
                     root.dialog.cwd.push(item.modelData.name);
-                else if (root.dialog.selectionValid)
-                    root.dialog.accepted(item.modelData.path);
+                // Folder mode picks the folder being browsed, so a double click
+                // on a file must not choose anything.
+                else if (!root.dialog.selectFolder && root.dialog.selectionValid)
+                    root.dialog.accept();
             }
         }
 
