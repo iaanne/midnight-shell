@@ -89,7 +89,11 @@ Controls.Menu {
 
             let item = root.itemPool[key];
             if (!item) {
-                item = menuItemComp.createObject(root);
+                // MenuItem.text is a required property, and createObject() with
+                // an uninitialized required property yields null in Qt 6 — every
+                // row then failed at item.clicked below and the menu stayed
+                // empty. Seed it and let applyEntries() overwrite it.
+                item = menuItemComp.createObject(root, { text: "" });
                 item.clicked.connect(() => root.executeEntryByKey(key));
                 root.itemPool[key] = item;
             }
