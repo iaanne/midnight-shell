@@ -39,6 +39,14 @@ Variants {
         anchors.left: true
         anchors.right: true
 
+        // The wallpaper takes no pointer input — every desktop interaction is on
+        // DesktopSurface.qml — and this window drops onto the Bottom layer while a
+        // wallpaper-engine wallpaper is live or the wallpaper is off. There it is a
+        // full-screen surface that could swallow the desktop's clicks depending on
+        // which surface maps last, so declare its input region empty instead of
+        // leaving it implicit (see BadAppleOverlay.qml for what that looks like).
+        mask: Region {}
+
         ShellState.ComponentRef {
             screen: win.screen
             slot: "background"

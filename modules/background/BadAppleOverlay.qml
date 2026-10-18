@@ -25,9 +25,27 @@ Variants {
         anchors.left: true
         anchors.right: true
 
-        mask: Region {
+        // This surface is full-screen, on the Bottom layer, and stays mapped while
+        // the effect is idle (the shader samples the video output, which only
+        // renders while the surface is mapped). That makes its input region
+        // load-bearing: while idle it has to receive nothing, or it swallows every
+        // pointer event bound for the desktop surface stacked below it — which is
+        // what made desktop icons render but never hover, click or right-click,
+        // while windows (above the Bottom layer) and the bar (above it too) kept
+        // working. Idle ⇒ empty region, the idiom DesktopLyricsOverlay and
+        // Exclusions already use. An empty Region, not null: a null mask means
+        // "no input region set", i.e. the whole window takes input.
+        mask: BadApplePlayer.shouldPlay ? playbackRegion : idleRegion
+
+        Region {
+            id: playbackRegion
+
             width: root.width
             height: root.height
+        }
+
+        Region {
+            id: idleRegion
         }
 
         Item {
