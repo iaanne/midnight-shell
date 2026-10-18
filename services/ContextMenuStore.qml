@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Caelestia.Config
+import Caelestia.I18n
 import qs.utils
 
 Singleton {
@@ -25,14 +26,14 @@ Singleton {
 
     function defaultEntries() {
         return [
-            { id: "paste", label: qsTr("Paste"), icon: "content_paste", action: "Paste", enabled: true, type: "default" },
-            { id: "add_widget", label: qsTr("Add Widget"), icon: "widgets", action: "AddWidget", enabled: true, type: "default" },
-            { id: "arrange_icons", label: qsTr("Arrange Icons"), icon: "sort", action: "ArrangeIcons", enabled: true, type: "default" },
-            { id: "toggle_desktop_icons", label: qsTr("Desktop Icons"), icon: "desktop_windows", action: "ToggleDesktopIcons", enabled: true, type: "default" },
-            { id: "random_wallpaper", label: qsTr("Random Wallpaper"), icon: "shuffle", action: "Wallpapers.setRandom()", enabled: true, type: "default" },
-            { id: "wallpaper_style", label: qsTr("Wallpaper & style"), icon: "wallpaper", action: "WindowFactory.create()", enabled: true, type: "default" },
-            { id: "desktop_settings", label: qsTr("Desktop Settings"), icon: "settings", action: "OpenDesktopSettings", enabled: true, type: "default" },
-            { id: "open_terminal", label: qsTr("Open Terminal"), icon: "terminal", command: "terminal", enabled: true, type: "default" }
+            { id: "paste", label: Tr.tr("Paste"), icon: "content_paste", action: "Paste", enabled: true, type: "default" },
+            { id: "add_widget", label: Tr.tr("Add Widget"), icon: "widgets", action: "AddWidget", enabled: true, type: "default" },
+            { id: "arrange_icons", label: Tr.tr("Arrange Icons"), icon: "sort", action: "ArrangeIcons", enabled: true, type: "default" },
+            { id: "toggle_desktop_icons", label: Tr.tr("Desktop Icons"), icon: "desktop_windows", action: "ToggleDesktopIcons", enabled: true, type: "default" },
+            { id: "random_wallpaper", label: Tr.tr("Random Wallpaper"), icon: "shuffle", action: "Wallpapers.setRandom()", enabled: true, type: "default" },
+            { id: "wallpaper_style", label: Tr.tr("Wallpaper & style"), icon: "wallpaper", action: "WindowFactory.create()", enabled: true, type: "default" },
+            { id: "desktop_settings", label: Tr.tr("Desktop Settings"), icon: "settings", action: "OpenDesktopSettings", enabled: true, type: "default" },
+            { id: "open_terminal", label: Tr.tr("Open Terminal"), icon: "terminal", command: "terminal", enabled: true, type: "default" }
         ];
     }
 
