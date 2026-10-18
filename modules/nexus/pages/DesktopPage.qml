@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Caelestia.Config
+import Caelestia.I18n
 import qs.components
 import qs.components.controls
 import qs.services
@@ -44,47 +45,47 @@ PageBase {
     // picker for everything that needs placing by hand.
     readonly property list<MenuItem> widgetItems: [
         MenuItem {
-            text: qsTr("Clock & Weather")
+            text: Tr.tr("Clock & Weather")
             icon: "partly_cloudy_day"
             value: "clock"
         },
         MenuItem {
-            text: qsTr("Desktop Clock")
+            text: Tr.tr("Desktop Clock")
             icon: "schedule"
             value: "desktopClock"
         },
         MenuItem {
-            text: qsTr("Media")
+            text: Tr.tr("Media")
             icon: "music_note"
             value: "media"
         },
         MenuItem {
-            text: qsTr("Media Shapes")
+            text: Tr.tr("Media Shapes")
             icon: "graphic_eq"
             value: "shapes"
         },
         MenuItem {
-            text: qsTr("Desktop Lyrics")
+            text: Tr.tr("Desktop Lyrics")
             icon: "lyrics"
             value: "lyrics"
         },
         MenuItem {
-            text: qsTr("System Monitor")
+            text: Tr.tr("System Monitor")
             icon: "monitoring"
             value: "system"
         },
         MenuItem {
-            text: qsTr("Calendar")
+            text: Tr.tr("Calendar")
             icon: "calendar_month"
             value: "calendar"
         },
         MenuItem {
-            text: qsTr("Note")
+            text: Tr.tr("Note")
             icon: "sticky_note_2"
             value: "note"
         },
         MenuItem {
-            text: qsTr("Folder View")
+            text: Tr.tr("Folder View")
             icon: "folder_open"
             value: "folder"
         }
@@ -92,38 +93,38 @@ PageBase {
 
     readonly property list<MenuItem> iconSizeItems: [
         MenuItem {
-            text: qsTr("Small")
+            text: Tr.tr("Small")
             value: 48
         },
         MenuItem {
-            text: qsTr("Medium")
+            text: Tr.tr("Medium")
             value: 64
         },
         MenuItem {
-            text: qsTr("Large")
+            text: Tr.tr("Large")
             value: 80
         },
         MenuItem {
-            text: qsTr("Huge")
+            text: Tr.tr("Huge")
             value: 96
         }
     ]
 
     readonly property list<MenuItem> sortItems: [
         MenuItem {
-            text: qsTr("Name")
+            text: Tr.tr("Name")
             value: "name"
         },
         MenuItem {
-            text: qsTr("Type")
+            text: Tr.tr("Type")
             value: "type"
         },
         MenuItem {
-            text: qsTr("Date modified")
+            text: Tr.tr("Date modified")
             value: "modified"
         },
         MenuItem {
-            text: qsTr("Size")
+            text: Tr.tr("Size")
             value: "size"
         }
     ]
@@ -142,7 +143,7 @@ PageBase {
         root.controller?.resizeItem(widget.key, info.size.w, info.size.h);
     }
 
-    title: qsTr("Desktop")
+    title: Tr.tr("Desktop")
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -152,14 +153,14 @@ PageBase {
 
         SectionHeader {
             first: true
-            text: qsTr("Desktop icons")
+            text: Tr.tr("Desktop icons")
         }
 
         ToggleRow {
             first: true
             Layout.fillWidth: true
-            text: qsTr("Show desktop icons")
-            subtext: qsTr("Files and folders from ~/Desktop, shown on the wallpaper")
+            text: Tr.tr("Show desktop icons")
+            subtext: Tr.tr("Files and folders from ~/Desktop, shown on the wallpaper")
             configNode: root.targetConfig.background
             propertyName: "desktopIconsEnabled"
             checked: root.targetConfig.background.desktopIconsEnabled
@@ -172,8 +173,8 @@ PageBase {
         SelectRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
-            label: qsTr("Icon size")
-            subtext: qsTr("Ctrl+scroll on the desktop also resizes icons")
+            label: Tr.tr("Icon size")
+            subtext: Tr.tr("Ctrl+scroll on the desktop also resizes icons")
             menuItems: root.iconSizeItems
             active: root.iconSizeItems.find(i => i.value === DesktopLayout.iconSize) ?? root.iconSizeItems[1]
             onSelected: item => DesktopLayout.setIconSize(item.value)
@@ -182,8 +183,8 @@ PageBase {
         ToggleRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
-            text: qsTr("Round icon corners")
-            subtext: qsTr("Clip full-colour icons to a rounded square")
+            text: Tr.tr("Round icon corners")
+            subtext: Tr.tr("Clip full-colour icons to a rounded square")
             checked: DesktopLayout.roundIcons
             onToggled: DesktopLayout.setRoundIcons(checked)
         }
@@ -193,8 +194,8 @@ PageBase {
         ToggleRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
-            text: qsTr("Monochrome icons")
-            subtext: qsTr("Draw icons from the bundled monochrome set using the theme colour")
+            text: Tr.tr("Monochrome icons")
+            subtext: Tr.tr("Draw icons from the bundled monochrome set using the theme colour")
             configNode: root.targetConfig.background
             propertyName: "materialYouIconsEnabled"
             checked: root.targetConfig.background.materialYouIconsEnabled
@@ -207,8 +208,8 @@ PageBase {
         ToggleRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
-            text: qsTr("Vibrant tint")
-            subtext: qsTr("Use a more saturated tint for monochrome icons")
+            text: Tr.tr("Vibrant tint")
+            subtext: Tr.tr("Use a more saturated tint for monochrome icons")
             configNode: root.targetConfig.background
             propertyName: "materialYouIconsVibrant"
             checked: root.targetConfig.background.materialYouIconsVibrant
@@ -222,8 +223,8 @@ PageBase {
         ToggleRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
-            text: qsTr("Single click to open")
-            subtext: qsTr("Without it one click selects and a second one opens")
+            text: Tr.tr("Single click to open")
+            subtext: Tr.tr("Without it one click selects and a second one opens")
             checked: DesktopLayout.singleClick
             onToggled: DesktopLayout.singleClick = checked
         }
@@ -231,8 +232,8 @@ PageBase {
         ToggleRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
-            text: qsTr("Arrange icons automatically")
-            subtext: qsTr("Keep icons packed; dragging one reorders the rest")
+            text: Tr.tr("Arrange icons automatically")
+            subtext: Tr.tr("Keep icons packed; dragging one reorders the rest")
             checked: DesktopLayout.autoArrange
             onToggled: DesktopLayout.setAutoArrange(checked)
         }
@@ -241,17 +242,17 @@ PageBase {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             last: true
             Layout.fillWidth: true
-            label: qsTr("Sort by")
-            subtext: qsTr("Sorts once unless icons are arranged automatically")
+            label: Tr.tr("Sort by")
+            subtext: Tr.tr("Sorts once unless icons are arranged automatically")
             menuItems: root.sortItems
             active: root.sortItems.find(i => i.value === DesktopLayout.sortKey) ?? null
-            fallbackText: qsTr("Manual")
+            fallbackText: Tr.tr("Manual")
             fallbackIcon: "sort"
             onSelected: item => root.controller?.sortBy(item.value)
         }
 
         SectionHeader {
-            text: qsTr("Widgets")
+            text: Tr.tr("Widgets")
         }
 
         ItemList {
@@ -260,7 +261,7 @@ PageBase {
             showList: true
             first: true
             placeholderIcon: "widgets"
-            placeholderText: qsTr("No desktop widgets")
+            placeholderText: Tr.tr("No desktop widgets")
             model: ScriptModel {
                 values: root.widgetList
             }
@@ -328,10 +329,10 @@ PageBase {
         SelectRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
-            label: qsTr("Add widget")
-            subtext: qsTr("Placed in the first free spot; drag it on the desktop to move it")
+            label: Tr.tr("Add widget")
+            subtext: Tr.tr("Placed in the first free spot; drag it on the desktop to move it")
             menuItems: root.widgetItems
-            fallbackText: qsTr("Add")
+            fallbackText: Tr.tr("Add")
             fallbackIcon: "add"
             onSelected: item => root.addWidget(item.value)
         }
@@ -340,8 +341,8 @@ PageBase {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             last: true
             Layout.fillWidth: true
-            text: qsTr("Auto-hide media shapes")
-            subtext: qsTr("Hide media shapes while a window covers the screen")
+            text: Tr.tr("Auto-hide media shapes")
+            subtext: Tr.tr("Hide media shapes while a window covers the screen")
             configNode: root.targetConfig.background.desktopShapes
             propertyName: "autoHide"
             checked: root.targetConfig.background.desktopShapes.autoHide

@@ -6,13 +6,13 @@ import qs.modules.nexus.common
 PageBase {
     id: root
 
-    title: qsTr("Background elements")
-
     // The clock and the wallpaper lyrics are widgets now, so what used to be
     // "Enabled" is whether one is placed on the grid.
     readonly property bool clockPlaced: Object.keys(DesktopLayout.widgets).some(id => DesktopLayout.widgets[id].type === "desktopClock")
     readonly property bool lyricsPlaced: Object.keys(DesktopLayout.widgets).some(id => DesktopLayout.widgets[id].type === "lyrics")
     readonly property bool lyricsOverlay: root.targetConfig.background.desktopLyrics.enabled && root.targetConfig.background.desktopLyrics.overlay
+
+    title: qsTr("Background elements")
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
