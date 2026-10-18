@@ -30,7 +30,10 @@ MouseArea {
     property real marginY
 
     property list<MenuItem> items
-    property MenuItem active: items[0] ?? null
+    // Entries that do not apply are dropped from the model rather than hidden:
+    // a MenuItem is a plain QtObject with no visibility of its own.
+    readonly property list<MenuItem> visibleItems: (root.items ?? []).filter(entry => entry.visible !== false)
+    property MenuItem active: root.visibleItems[0] ?? null
     property bool expanded
     property real maxHeight: 320
 
@@ -195,7 +198,7 @@ MouseArea {
                     Repeater {
                         id: repeater
 
-                        model: root.items
+                        model: root.visibleItems
 
                     StyledRect {
                         id: item

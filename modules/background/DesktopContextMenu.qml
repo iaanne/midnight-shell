@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Caelestia.Config
+import Caelestia.I18n
 import qs.components.controls as Controls
 import qs.services
 import qs.utils
@@ -18,6 +19,8 @@ Controls.Menu {
     property string screenName: ""
     property var itemPool: ({})
     property var entryByKey: ({})
+    // Filled in by applyEntries(), read by Menu through items:.
+    property var dynamicModel: []
     readonly property bool iconsEnabled: screenName ? ContextMenuStore.iconsShownOn(screenName) : GlobalConfig.background.desktopIconsEnabled
     readonly property bool iconsShown: (screenName ? GlobalConfig.forScreen(screenName) : GlobalConfig).background.wallpaperEnabled && (screenName ? GlobalConfig.forScreen(screenName) : GlobalConfig).background.desktopIconsEnabled
 
@@ -92,7 +95,7 @@ Controls.Menu {
             }
 
             if (entry.action === "ToggleDesktopIcons") {
-                item.text = Qt.binding(() => root.iconsEnabled ? qsTr("Hide Desktop Icons") : qsTr("Show Desktop Icons"));
+                item.text = Qt.binding(() => root.iconsEnabled ? Tr.tr("Hide Desktop Icons") : Tr.tr("Show Desktop Icons"));
                 item.icon = Qt.binding(() => root.iconsEnabled ? "visibility_off" : "visibility");
                 item.visible = true;
             } else if (entry.action === "Paste") {
@@ -145,6 +148,8 @@ Controls.Menu {
         refresh();
         replayReveal();
     }
+
+    items: root.dynamicModel
 
     attachSideX: _flipX ? Controls.Menu.Left : Controls.Menu.Right
     attachSideY: _flipY ? Controls.Menu.Top : Controls.Menu.Bottom
