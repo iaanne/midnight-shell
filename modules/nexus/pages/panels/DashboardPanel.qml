@@ -278,6 +278,18 @@ PageBase {
 
         ToggleRow {
             Layout.fillWidth: true
+            text: Tr.tr("Last.fm")
+            configNode: root.targetConfig.dashboard
+            propertyName: "showLastfm"
+            checked: root.targetConfig.dashboard.showLastfm
+            onToggled: {
+                root.targetConfig.dashboard.showLastfm = checked;
+                root.targetConfig.save();
+            }
+        }
+
+        ToggleRow {
+            Layout.fillWidth: true
             last: true
             text: qsTr("Terminal")
             configNode: root.targetConfig.dashboard

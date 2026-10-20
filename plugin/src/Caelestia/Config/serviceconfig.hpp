@@ -68,6 +68,12 @@ class ServiceConfig : public settings::ObjectNode {
     CONFIG_GLOBAL_PROPERTY(bool, pipPaused, false)
     // Quick share
     CONFIG_GLOBAL_PROPERTY(bool, quickShareAutoStart, false)
+    // Last.fm (read-only: profile, recent scrobbles, artist and album info)
+    CONFIG_GLOBAL_PROPERTY(bool, lastfmEnabled, false)
+    CONFIG_GLOBAL_PROPERTY(QString, lastfmUsername, u""_s)
+    CONFIG_GLOBAL_PROPERTY(QString, lastfmApiKey, u""_s)
+    CONFIG_GLOBAL_PROPERTY(int, lastfmRefreshInterval, 30000)
+    CONFIG_GLOBAL_PROPERTY(int, lastfmRecentLimit, 10)
     // LED polling (capslock/numlock via sysfs)
     CONFIG_GLOBAL_PROPERTY(bool, ledPollEnabled, true)
 };

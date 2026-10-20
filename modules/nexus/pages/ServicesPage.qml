@@ -233,6 +233,12 @@ PageBase {
             onClicked: root.nState.openSubPage(6)
         }
 
+        NavRow {
+            icon: "music_note"
+            text: Tr.tr("Last.fm")
+            subtext: Tr.tr("Profile, recent scrobbles and music info")
+            onClicked: root.nState.openSubPage(7)
+        }
 
         SelectRow {
             Layout.fillWidth: true

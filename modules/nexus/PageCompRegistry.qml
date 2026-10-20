@@ -264,6 +264,9 @@ QtObject {
                 Component {
                     QuickSharePage {}
                 }
+                Component {
+                    LastfmPage {}
+                }
             }
         },
         Component {

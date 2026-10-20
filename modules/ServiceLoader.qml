@@ -18,5 +18,8 @@ Scope {
 
         if (GlobalConfig.utilities.vpn.enabled)
             VPN;
+
+        if (GlobalConfig.services.lastfmEnabled)
+            Lastfm;
     }
 }

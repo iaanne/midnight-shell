@@ -1,0 +1,3 @@
+LastfmWidget {
+    variantMode: "recent"
+}

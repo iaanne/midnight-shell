@@ -143,6 +143,22 @@ QtObject {
             source: "widgets/LyricsWidget.qml"
         },
         {
+            type: "lastfm",
+            name: qsTr("Last.fm"),
+            icon: "music_note",
+            size: { w: 3, h: 2 },
+            min: { w: 2, h: 1 },
+            max: { w: 6, h: 4 },
+            frameless: true,
+            source: "widgets/LastfmWidget.qml",
+            config: { mode: "recent", limit: 10 },
+            variants: [
+                { id: "hero", name: qsTr("Now Playing"), icon: "album", size: { w: 3, h: 2 }, min: { w: 2, h: 2 }, max: { w: 6, h: 4 }, frameless: true, source: "widgets/HeroLastfmWidget.qml" },
+                { id: "recent", name: qsTr("Recent"), icon: "queue_music", size: { w: 3, h: 2 }, min: { w: 2, h: 2 }, max: { w: 6, h: 4 }, frameless: true, source: "widgets/RecentLastfmWidget.qml" },
+                { id: "profile", name: qsTr("Profile"), icon: "person", size: { w: 3, h: 2 }, min: { w: 2, h: 2 }, max: { w: 5, h: 3 }, frameless: true, source: "widgets/ProfileLastfmWidget.qml" }
+            ]
+        },
+        {
             type: "system",
             name: qsTr("System Monitor"),
             icon: "monitoring",

@@ -44,6 +44,12 @@ Item {
                 enabled: Config.dashboard.showWeather
             },
             {
+                component: lastfmComponent,
+                iconName: "music_note",
+                text: Tr.tr("Last.fm"),
+                enabled: Config.dashboard.showLastfm && Lastfm.configured
+            },
+            {
                 component: terminalComponent,
                 iconName: "terminal",
                 text: qsTr("Terminal"),
@@ -210,6 +216,14 @@ Item {
                 id: weatherComponent
 
                 WeatherTab {}
+            }
+
+            Component {
+                id: lastfmComponent
+
+                LastfmTab {
+                    screenState: root.screenState
+                }
             }
 
             Component {
