@@ -21,6 +21,7 @@ Item {
         property bool recordingListExpanded: false
         property string recordingConfirmDelete
         property string recordingMode
+        property int recordingFps: 0
         
         property bool quickShareListExpanded: false
         property bool quickShareDeviceSelectorOpen: false

@@ -15,9 +15,17 @@ StyledRect {
 
     required property var props
     required property ScreenState screenState
-    readonly property real nonAnimHeight: btnLayout.implicitHeight + listOrControls.implicitHeight + layout.spacing + layout.anchors.margins * 2
+    readonly property real nonAnimHeight: btnLayout.implicitHeight + fpsRow.implicitHeight + listOrControls.implicitHeight + layout.spacing * 2 + layout.anchors.margins * 2
 
     implicitHeight: layout.implicitHeight + layout.anchors.margins * 2
+
+    function startRecording(extraArgs: var): void {
+        const args = extraArgs.slice();
+        const fps = Number(root.props.recordingFps) || 0;
+        if (fps > 0)
+            args.push("-f", `${fps}`);
+        Recorder.start(args);
+    }
 
     radius: Tokens.rounding.large
     color: Colours.tPalette.m3surfaceContainer
@@ -184,25 +192,88 @@ StyledRect {
                         icon: "fullscreen"
                         text: Tr.tr("Record fullscreen")
                         activeText: Tr.trCtx("Fullscreen", "recording mode")
-                        onClicked: Recorder.start()
+                        onClicked: root.startRecording([])
                     },
                     MenuItem {
                         icon: "screenshot_region"
                         text: Tr.tr("Record region")
                         activeText: Tr.trCtx("Region", "recording mode")
-                        onClicked: Recorder.start(["-r"])
+                        onClicked: root.startRecording(["-r"])
                     },
                     MenuItem {
                         icon: "select_to_speak"
                         text: Tr.tr("Record fullscreen with sound")
                         activeText: Tr.trCtx("Fullscreen", "recording mode")
-                        onClicked: Recorder.start(["-s"])
+                        onClicked: root.startRecording(["-s"])
                     },
                     MenuItem {
                         icon: "volume_up"
                         text: Tr.tr("Record region with sound")
                         activeText: Tr.trCtx("Region", "recording mode")
-                        onClicked: Recorder.start(["-sr"])
+                        onClicked: root.startRecording(["-sr"])
+                    }
+                ]
+            }
+        }
+
+        RowLayout {
+            id: fpsRow
+
+            Layout.fillWidth: true
+            spacing: Tokens.spacing.small
+
+            StyledText {
+                Layout.fillWidth: true
+                text: Tr.tr("Frame rate")
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.body.small
+            }
+
+            SplitButton {
+                type: SplitButton.Tonal
+                disabled: Recorder.running
+                leftClickOpensMenu: true
+                horizontalPadding: Tokens.padding.small
+
+                active: menuItems.find(m => Number(m.value) === Number(root.props.recordingFps)) ?? menuItems[0]
+                menu.onItemSelected: item => root.props.recordingFps = Number(item.value)
+
+                menuItems: [
+                    MenuItem {
+                        icon: "monitor"
+                        text: Tr.tr("Auto (display rate)")
+                        activeText: Tr.tr("Auto")
+                        value: 0
+                    },
+                    MenuItem {
+                        icon: "speed"
+                        text: Tr.tr("30 fps")
+                        activeText: "30"
+                        value: 30
+                    },
+                    MenuItem {
+                        icon: "speed"
+                        text: Tr.tr("60 fps")
+                        activeText: "60"
+                        value: 60
+                    },
+                    MenuItem {
+                        icon: "speed"
+                        text: Tr.tr("90 fps")
+                        activeText: "90"
+                        value: 90
+                    },
+                    MenuItem {
+                        icon: "speed"
+                        text: Tr.tr("120 fps")
+                        activeText: "120"
+                        value: 120
+                    },
+                    MenuItem {
+                        icon: "speed"
+                        text: Tr.tr("144 fps")
+                        activeText: "144"
+                        value: 144
                     }
                 ]
             }

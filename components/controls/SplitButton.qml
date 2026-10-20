@@ -16,6 +16,8 @@ Row {
     property real verticalPadding: Tokens.padding.small
     property int type: SplitButton.Filled
     property bool disabled
+    // Open the menu instead of invoking the active item when the left half is clicked.
+    property bool leftClickOpensMenu
     property bool menuOnTop
     property string fallbackIcon
     property string fallbackText
@@ -54,7 +56,12 @@ Row {
             bottomRightRadius: parent.bottomRightRadius
             color: root.textColour
             disabled: root.disabled
-            onClicked: root.active?.clicked()
+            onClicked: {
+                if (root.leftClickOpensMenu)
+                    root.expanded = !root.expanded;
+                else
+                    root.active?.clicked();
+            }
         }
 
         RowLayout {

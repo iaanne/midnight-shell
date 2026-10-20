@@ -101,6 +101,18 @@ StyledRect {
                     }
                 }
                 DelegateChoice {
+                    roleValue: "speaker"
+                    delegate: Toggle {
+                        icon: Audio.muted ? "volume_off" : "volume_up"
+                        checked: !Audio.muted
+                        onClicked: {
+                            const audio = Audio.sink?.audio;
+                            if (audio)
+                                audio.muted = !audio.muted;
+                        }
+                    }
+                }
+                DelegateChoice {
                     roleValue: "mic"
                     delegate: Toggle {
                         icon: "mic"
@@ -160,6 +172,26 @@ StyledRect {
                             const newState = !QuickShare.isEnabled;
                             QuickShare.setEnabled(newState);
                             QuickShare.setVisible(newState);
+                        }
+                    }
+                }
+                DelegateChoice {
+                    roleValue: "visualizer"
+                    delegate: Toggle {
+                        icon: "equalizer"
+                        checked: GlobalConfig.background.visualiser.enabled
+                        onClicked: GlobalConfig.background.visualiser.enabled = !checked
+                    }
+                }
+                DelegateChoice {
+                    roleValue: "desktopLyrics"
+                    delegate: Toggle {
+                        icon: "lyrics"
+                        checked: GlobalConfig.background.desktopLyrics.enabled && GlobalConfig.background.desktopLyrics.overlay
+                        onClicked: {
+                            const enabled = !checked;
+                            GlobalConfig.background.desktopLyrics.enabled = enabled;
+                            GlobalConfig.background.desktopLyrics.overlay = enabled;
                         }
                     }
                 }

@@ -135,6 +135,14 @@ PageBase {
         }
 
         ToggleRow {
+            text: Tr.tr("Speaker")
+            subtext: Tr.tr("Mute or unmute the default output")
+            disabled: !Config.utilities.cards.quickToggles
+            checked: root.isToggleOn("speaker")
+            onToggled: root.setToggleOn("speaker", checked)
+        }
+
+        ToggleRow {
             text: Tr.tr("Microphone")
             subtext: Tr.tr("Mute or unmute the default source")
             disabled: !Config.utilities.cards.quickToggles
@@ -189,6 +197,22 @@ PageBase {
             disabled: !Config.utilities.cards.quickToggles
             checked: root.isToggleOn("wallpaper")
             onToggled: root.setToggleOn("wallpaper", checked)
+        }
+
+        ToggleRow {
+            text: Tr.tr("Visualizer")
+            subtext: Tr.tr("Show the background visualiser")
+            disabled: !Config.utilities.cards.quickToggles
+            checked: root.isToggleOn("visualizer")
+            onToggled: root.setToggleOn("visualizer", checked)
+        }
+
+        ToggleRow {
+            text: Tr.tr("Desktop lyrics")
+            subtext: Tr.tr("Show overlay lyrics over every window")
+            disabled: !Config.utilities.cards.quickToggles
+            checked: root.isToggleOn("desktopLyrics")
+            onToggled: root.setToggleOn("desktopLyrics", checked)
         }
 
         ToggleRow {

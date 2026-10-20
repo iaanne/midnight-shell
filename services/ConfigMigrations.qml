@@ -34,5 +34,33 @@ Singleton {
         };
     }
 
-    Component.onCompleted: root.seedDesktopElements()
+    // Built-in quick toggles added after the list was introduced. Insert any
+    // missing entries in their intended order so existing configs pick them up
+    // without needing a rebuilt config plugin.
+    function ensureQuickToggle(id: string, beforeIds: list<string>): void {
+        const list = GlobalConfig.utilities.quickToggles;
+        if (list.values.some(item => item.id === id))
+            return;
+
+        let index = list.count;
+        for (const beforeId of beforeIds) {
+            const beforeIndex = list.values.findIndex(item => item.id === beforeId);
+            if (beforeIndex >= 0) {
+                index = beforeIndex;
+                break;
+            }
+        }
+
+        list.insert({
+            id,
+            enabled: true
+        }, index);
+    }
+
+    Component.onCompleted: {
+        root.seedDesktopElements();
+        root.ensureQuickToggle("speaker", ["mic"]);
+        root.ensureQuickToggle("visualizer", ["badapple"]);
+        root.ensureQuickToggle("desktopLyrics", ["badapple"]);
+    }
 }
