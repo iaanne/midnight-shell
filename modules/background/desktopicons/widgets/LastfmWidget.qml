@@ -54,6 +54,10 @@ Item {
 
     readonly property bool needsSetup: !Lastfm.hasCredentials || !Lastfm.enabled
     readonly property bool disabled: Lastfm.hasCredentials && !Lastfm.enabled
+    // The desktop controller pauses this while the desktop is hidden, covered
+    // by app windows, or in game mode. The Nexus live preview shares that
+    // controller but is not on the desktop, so it stays live.
+    readonly property bool widgetActive: root.frame?.isPreview === true || (root.controller?.widgetsActive ?? true)
     readonly property bool feedFailed: Lastfm.configured && Lastfm.recentTracks.length === 0 && Lastfm.error !== "" && !Lastfm.loadingRecent
     readonly property bool gridFailed: root.isGrid && Lastfm.configured && root.chart !== null && root.chartError !== "" && !root.chartLoading && root.chartItems.length === 0
     readonly property bool failed: root.isGrid ? root.gridFailed : root.feedFailed
@@ -68,7 +72,7 @@ Item {
     property string activeChartKey: ""
 
     function syncFeed(): void {
-        const needFeed = !root.isGrid && root.frame !== undefined;
+        const needFeed = !root.isGrid && root.frame !== undefined && root.widgetActive;
         if (needFeed && !root.feedAcquired) {
             Lastfm.acquireWidget();
             root.feedAcquired = true;
@@ -79,14 +83,22 @@ Item {
     }
 
     function syncChart(): void {
-        const key = root.isGrid && root.frame !== undefined ? root.chartKey : "";
+        const key = root.isGrid && root.frame !== undefined && root.widgetActive ? root.chartKey : "";
         if (key === root.activeChartKey)
             return;
         if (root.activeChartKey !== "")
             Lastfm.releaseChart(root.activeChartKey);
         root.activeChartKey = key;
-        if (key !== "")
+        if (key !== "") {
             Lastfm.acquireChart(root.chartEntity, root.chartUnit, root.chartValue);
+            // We release charts while the widget is covered, which cancels an
+            // in-flight aggregation. If the cached result is older than this
+            // widget's interval, restart it as soon as the widget is visible
+            // again instead of waiting for the next timer tick.
+            const entry = Lastfm.charts[key] ?? null;
+            if (entry && !entry.loading && Date.now() - (entry.at ?? 0) >= root.refreshMs)
+                Lastfm.refreshChart(root.chartEntity, root.chartUnit, root.chartValue, false, root.refreshMs);
+        }
     }
 
     function syncAll(): void {
@@ -95,7 +107,7 @@ Item {
     }
 
     function refreshNow(manual: bool): void {
-        if (!Lastfm.configured)
+        if (!root.widgetActive || !Lastfm.configured)
             return;
         if (root.isGrid) {
             Lastfm.refreshChart(root.chartEntity, root.chartUnit, root.chartValue, manual === true, root.refreshMs);
@@ -125,6 +137,7 @@ Item {
     onModeChanged: root.syncAll()
     onFrameChanged: root.syncAll()
     onChartKeyChanged: root.syncAll()
+    onWidgetActiveChanged: root.syncAll()
 
     Connections {
         function onConfiguredChanged(): void {
@@ -141,7 +154,7 @@ Item {
     Timer {
         interval: root.refreshTimerMs
         repeat: true
-        running: root.frame !== undefined && Lastfm.configured
+        running: root.frame !== undefined && Lastfm.configured && root.widgetActive
         onTriggered: root.refreshNow(false)
     }
 
@@ -400,11 +413,12 @@ Item {
         anchors.centerIn: parent
         width: Math.min(parent.width - Tokens.padding.large * 2, 260)
         spacing: Tokens.spacing.small
-        visible: root.gridLoading
+        visible: root.gridLoading && root.widgetActive
 
         LoadingIndicator {
             Layout.alignment: Qt.AlignHCenter
             implicitSize: 34
+            animated: root.widgetActive
         }
 
         StyledText {
@@ -514,7 +528,8 @@ Item {
         LoadingIndicator {
             anchors.centerIn: parent
             implicitSize: 16
-            visible: root.refreshLoading
+            visible: root.refreshLoading && root.widgetActive
+            animated: root.widgetActive
         }
 
         Behavior on opacity {

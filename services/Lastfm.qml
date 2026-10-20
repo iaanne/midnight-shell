@@ -267,7 +267,9 @@ Singleton {
 
     function applyRecent(tracks: var, preserveSelection: bool): void {
         const previous = preserveSelection ? trackKey(selectedTrack) : "";
-        recentTracks = tracks;
+        const changed = !sameRecentTracks(recentTracks, tracks);
+        if (changed)
+            recentTracks = tracks;
 
         if (tracks.length === 0)
             selectedIndex = 0;
@@ -276,7 +278,24 @@ Singleton {
         else
             selectedIndex = 0;
 
-        loadDetails();
+        // Avoid rebuilding every feed widget/dashboard list when the poll
+        // returned exactly the same scrobbles (the common 30s case).
+        if (changed || !preserveSelection)
+            loadDetails();
+    }
+
+    function sameRecentTracks(a: var, b: var): bool {
+        if (!a || !b || a.length !== b.length)
+            return false;
+        for (let i = 0; i < a.length; i++) {
+            const left = a[i];
+            const right = b[i];
+            if (!left || !right)
+                return false;
+            if (left.name !== right.name || left.artist !== right.artist || left.album !== right.album || left.image !== right.image || left.url !== right.url || left.loved !== right.loved || left.nowPlaying !== right.nowPlaying || left.timestamp !== right.timestamp || left.mbid !== right.mbid)
+                return false;
+        }
+        return true;
     }
 
     function trackKey(track: var): string {
@@ -1332,7 +1351,10 @@ Singleton {
         interval: Math.max(10000, GlobalConfig.services.lastfmRefreshInterval ?? 30000)
         repeat: true
         running: root.dashboardSurfaces > 0 && root.configured
-        triggeredOnStart: true
+        // Acquiring the dashboard should not force a request; a hover that
+        // merely opens the dashboard must be able to reuse the feed cache.
+        // The periodic tick still forces, since that interval is explicit.
+        triggeredOnStart: false
         onTriggered: {
             // The dashboard interval is explicit, so bypass the short feed cache
             // when it is shorter than the cache lifetime.

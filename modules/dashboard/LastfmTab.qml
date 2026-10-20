@@ -16,6 +16,13 @@ Item {
 
     required property ScreenState screenState
 
+    // Set by Content.qml when this pane is loaded. The pane can stay alive on
+    // other dashboard tabs (keepAlive), but it must not keep polling there.
+    property int tabIndex: -1
+
+    readonly property bool tabActive: root.tabIndex >= 0 && root.screenState.dashboardTab === root.tabIndex
+    readonly property bool surfaceActive: root.screenState.dashboard && root.tabActive
+
     readonly property string emptyState: {
         if (!Lastfm.hasCredentials)
             return "setup";
@@ -33,15 +40,16 @@ Item {
     property bool acquired: false
 
     function syncActive(): void {
-        const active = root.screenState.dashboard;
-        if (active && !acquired) {
+        if (root.surfaceActive && !acquired) {
             acquired = true;
             Lastfm.acquire();
-        } else if (!active && acquired) {
+        } else if (!root.surfaceActive && acquired) {
             acquired = false;
             Lastfm.release();
         }
     }
+
+    onTabIndexChanged: root.syncActive()
 
     implicitWidth: Tokens.sizes.dashboard.mediaTabWidth
     implicitHeight: 380
@@ -101,10 +109,12 @@ Item {
 
                 ArtistCard {
                     Layout.fillWidth: true
+                    active: root.surfaceActive
                 }
 
                 AlbumCard {
                     Layout.fillWidth: true
+                    active: root.surfaceActive
                     visible: Lastfm.selectedTrack !== null && Lastfm.selectedTrack.album !== ""
                 }
             }
@@ -116,6 +126,7 @@ Item {
         width: Math.max(220, Math.min(parent.width - Tokens.padding.extraLarge * 2, 440))
         visible: root.emptyState !== ""
         loading: root.emptyState === "loading"
+        active: root.surfaceActive
         icon: {
             switch (root.emptyState) {
             case "setup":
@@ -162,6 +173,10 @@ Item {
 
     Connections {
         function onDashboardChanged(): void {
+            root.syncActive();
+        }
+
+        function onDashboardTabChanged(): void {
             root.syncActive();
         }
 

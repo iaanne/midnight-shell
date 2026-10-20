@@ -15,6 +15,7 @@ ColumnLayout {
     property string subtitle
     property string actionText
     property bool loading: false
+    property bool active: true
 
     signal action()
 
@@ -22,6 +23,7 @@ ColumnLayout {
 
     LoadingIndicator {
         visible: root.loading
+        animated: root.active
         Layout.alignment: Qt.AlignHCenter
         implicitSize: 34
     }

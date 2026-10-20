@@ -176,6 +176,19 @@ Item {
                                 paneAlive = true;
                         }
 
+                        onLoaded: {
+                            // The Last.fm pane should only poll while it is the
+                            // dashboard's current tab; keepAlive may keep it
+                            // loaded on other tabs.
+                            if (item && modelData.component === lastfmComponent)
+                                item.tabIndex = index;
+                        }
+
+                        onIndexChanged: {
+                            if (item && modelData.component === lastfmComponent)
+                                item.tabIndex = index;
+                        }
+
                         Component.onCompleted: active = Qt.binding(() => {
                             if (Config.dashboard.keepAlive && paneAlive)
                                 return true;

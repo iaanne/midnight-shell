@@ -28,6 +28,35 @@ Item {
     readonly property bool vibrant: screenConfig.materialYouIconsVibrant
     readonly property string desktopDir: Paths.home + "/Desktop"
 
+    // Desktop widget polling follows the desktop's actual exposure instead of
+    // its mapped surface. Keep it paused while an app covers the workspace, in
+    // game mode, or when the desktop itself is hidden by config.
+    readonly property var activeWorkspace: {
+        const spaces = Compositor.allWorkspaces ?? [];
+        return spaces.find(space => space.output === root.screenData.name && space.active)
+            ?? spaces.find(space => space.output === root.screenData.name && space.focused)
+            ?? null;
+    }
+    readonly property bool desktopCovered: {
+        const workspace = root.activeWorkspace;
+        if (!workspace)
+            return false;
+        const wins = (Compositor.windows ?? []).filter(win => String(win.workspaceId) === String(workspace.id));
+        if (wins.length === 0)
+            return false;
+        // An app with focus owns the workspace; desktop widgets are background.
+        if (wins.some(win => win.focused))
+            return true;
+        if (wins.some(win => win.fullscreen || win.maximized))
+            return true;
+        // Two tiled/floating windows already leave little desktop visible.
+        if (wins.length >= 2)
+            return true;
+        const area = (root.screenData?.width ?? 0) * (root.screenData?.height ?? 0);
+        return area > 0 && wins.some(win => Number(win.width) * Number(win.height) >= area * 0.7);
+    }
+    readonly property bool widgetsActive: root.visible && !root.desktopCovered && !GameMode.enabled
+
     readonly property int iconSize: DesktopLayout.iconSize
     readonly property int cellWidth: iconSize + 36
     readonly property int cellHeight: iconSize + 56

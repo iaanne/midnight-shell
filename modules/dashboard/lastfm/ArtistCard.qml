@@ -12,6 +12,7 @@ StyledRect {
     id: root
 
     readonly property var artist: Lastfm.artist
+    property bool active: true
 
     implicitHeight: content.implicitHeight + Tokens.padding.medium * 2
     radius: Tokens.rounding.extraLarge
@@ -61,6 +62,7 @@ StyledRect {
 
             LoadingIndicator {
                 visible: root.artist === null && Lastfm.loadingDetails
+                animated: root.active
                 implicitSize: 22
             }
         }

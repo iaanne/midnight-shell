@@ -269,6 +269,10 @@ PageBase {
             readonly property var span: ({ w: root.info.size?.w ?? 2, h: root.info.size?.h ?? 2 })
             readonly property string variant: root.widget?.variant ?? ""
             readonly property var config: root.widget?.config ?? ({})
+            // The preview gets the real desktop controller for size/icon data,
+            // but it is not the placed widget and must stay live while Nexus
+            // covers the desktop.
+            readonly property bool isPreview: true
 
             function setConfig(patch: var): void {
                 if (root.widget)
