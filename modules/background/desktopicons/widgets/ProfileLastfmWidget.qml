@@ -1,3 +1,0 @@
-LastfmWidget {
-    variantMode: "profile"
-}

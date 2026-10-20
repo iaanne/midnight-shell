@@ -199,7 +199,7 @@ PageBase {
         StepperRow {
             first: true
             label: Tr.tr("Refresh interval")
-            subtext: Tr.tr("How often recent scrobbles are checked (seconds)")
+            subtext: Tr.tr("How often the dashboard and feed data are checked (seconds). Desktop widgets have their own interval.")
             value: Math.round((GlobalConfig.services.lastfmRefreshInterval ?? 30000) / 1000)
             from: 10
             to: 300

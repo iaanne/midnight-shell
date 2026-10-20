@@ -151,11 +151,14 @@ QtObject {
             max: { w: 6, h: 4 },
             frameless: true,
             source: "widgets/LastfmWidget.qml",
-            config: { mode: "recent", limit: 10 },
+            config: { mode: "recent", limit: 10, chartEntity: "album", chartUnit: "month", chartValue: 3, showArtist: true, showAlbum: true, showYear: false },
+            // All looks share one implementation; the chosen id is read from
+            // the widget frame so the Nexus preview can switch looks in place.
             variants: [
-                { id: "hero", name: qsTr("Now Playing"), icon: "album", size: { w: 3, h: 2 }, min: { w: 2, h: 2 }, max: { w: 6, h: 4 }, frameless: true, source: "widgets/HeroLastfmWidget.qml" },
-                { id: "recent", name: qsTr("Recent"), icon: "queue_music", size: { w: 3, h: 2 }, min: { w: 2, h: 2 }, max: { w: 6, h: 4 }, frameless: true, source: "widgets/RecentLastfmWidget.qml" },
-                { id: "profile", name: qsTr("Profile"), icon: "person", size: { w: 3, h: 2 }, min: { w: 2, h: 2 }, max: { w: 5, h: 3 }, frameless: true, source: "widgets/ProfileLastfmWidget.qml" }
+                { id: "hero", name: qsTr("Now Playing"), icon: "album", size: { w: 3, h: 2 }, min: { w: 2, h: 2 }, max: { w: 6, h: 4 }, frameless: true, source: "widgets/LastfmWidget.qml" },
+                { id: "recent", name: qsTr("Recent"), icon: "queue_music", size: { w: 3, h: 2 }, min: { w: 2, h: 2 }, max: { w: 6, h: 4 }, frameless: true, source: "widgets/LastfmWidget.qml" },
+                { id: "profile", name: qsTr("Profile"), icon: "person", size: { w: 3, h: 2 }, min: { w: 2, h: 2 }, max: { w: 5, h: 3 }, frameless: true, source: "widgets/LastfmWidget.qml" },
+                { id: "grid", name: qsTr("Cover Grid"), icon: "grid_view", size: { w: 4, h: 3 }, min: { w: 2, h: 2 }, max: { w: 8, h: 6 }, frameless: true, source: "widgets/LastfmWidget.qml" }
             ]
         },
         {
