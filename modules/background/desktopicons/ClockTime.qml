@@ -31,15 +31,21 @@ QtObject {
     readonly property string dateShort: Time.format("ddd, MMM d")
 
     // Spoken-clock words, for the Word variant. "half past ten"-style.
+    // Minutes are rounded to five-minute buckets.
     function wordHours(): string {
         const names = ["twelve", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven"];
-        const h = root.hours % 12;
-        const m = root.minutes;
+        const minuteNames = ["five", "ten", "quarter", "twenty", "twenty five"];
+        const h = (((root.hours ?? 0) % 12) + 12) % 12;
+        const m = Math.max(0, Math.min(59, Math.floor(root.minutes ?? 0)));
         const next = (h + 1) % 12;
+
         if (m < 5)
             return names[h] + " o'clock";
+        if (m < 30)
+            return minuteNames[Math.floor(m / 5) - 1] + " past " + names[h];
         if (m < 35)
-            return (m < 30 ? ["five", "ten", "quarter", "twenty", "twenty five"][Math.floor(m / 5) - 1] : "half") + " past " + names[h];
-        return ["twenty five", "twenty", "quarter", "ten", "five"][Math.floor((60 - m) / 5) - 1] + " to " + names[next || 12];
+            return "half past " + names[h];
+
+        return minuteNames[Math.ceil((60 - m) / 5) - 1] + " to " + names[next];
     }
 }
