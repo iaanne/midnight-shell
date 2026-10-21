@@ -10,6 +10,8 @@ import qs.services
 StyledRect {
     id: root
 
+    property bool active: true
+
     color: Colours.tPalette.m3surfaceContainer
     radius: Tokens.rounding.extraLarge
 
@@ -63,6 +65,8 @@ StyledRect {
                 historyLength: NetworkUsage.historyLength
 
                 Connections {
+                    enabled: root.active
+
                     function onValuesChanged(): void {
                         sparkline.targetMax = Math.max(NetworkUsage.downloadBuffer.maximum, NetworkUsage.uploadBuffer.maximum, 1024);
                         slideAnim.restart();
@@ -78,11 +82,14 @@ StyledRect {
                     property: "slideProgress"
                     from: 0
                     to: 1
+                    paused: !root.active
                     easing.type: Easing.Linear
                     duration: GlobalConfig.dashboard.resourceUpdateInterval
                 }
 
                 Behavior on smoothMax {
+                    enabled: root.active
+
                     Anim {}
                 }
             }

@@ -15,6 +15,11 @@ import qs.utils
 Item {
     id: root
 
+    // Set by Content.qml. Avoid running one-time shell/hostname work while
+    // the terminal is only preloaded as a neighbouring tab.
+    property bool paneActive: false
+    property bool paneStarted: false
+
     readonly property string shellName: "fish"
 
     property string outputBuffer: ""
@@ -193,10 +198,16 @@ Item {
         }
     }
 
-    Component.onCompleted: {
-        startShell();
+    function startPane(): void {
+        if (!root.paneActive || root.paneStarted)
+            return;
+        root.paneStarted = true;
+        root.startShell();
         initTimer.start();
     }
+
+    Component.onCompleted: root.startPane()
+    onPaneActiveChanged: root.startPane()
 
     Component {
         id: shellProcessComp

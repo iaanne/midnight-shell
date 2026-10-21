@@ -12,11 +12,16 @@ Item {
 
     required property ScreenState screenState
 
+    // Set by Content.qml; false while this tab is offscreen or the dashboard
+    // is closed even if keepAlive retains the pane.
+    property bool paneActive: true
+
     implicitWidth: Tokens.sizes.dashboard.mediaTabWidth
     implicitHeight: Tokens.sizes.dashboard.mediaTabHeight
 
     BackgroundShapes {
         anchors.fill: parent
+        active: root.paneActive
     }
 
     RowLayout {
@@ -27,6 +32,7 @@ Item {
         CoverVisualiser {
             Layout.fillHeight: true
             implicitWidth: Tokens.sizes.dashboard.mediaSectionWidth
+            active: root.paneActive
         }
 
         Item {
@@ -85,7 +91,7 @@ Item {
                 anchors.centerIn: parent
                 anchors.horizontalCenterOffset: -Tokens.padding.extraLarge * 2
                 asynchronous: true
-                active: opacity > 0
+                active: root.paneActive && opacity > 0
                 opacity: 0
 
                 sourceComponent: ColumnLayout {
@@ -132,18 +138,20 @@ Item {
 
                 anchors.fill: parent
                 asynchronous: true
-                active: opacity > 0
+                active: root.paneActive && opacity > 0
 
                 sourceComponent: RowLayout {
                     spacing: Tokens.spacing.extraLarge
 
                     Details {
                         Layout.fillWidth: true
+                        active: root.paneActive
                     }
 
                     LyricsAndSelector {
                         Layout.fillHeight: true
                         implicitWidth: Tokens.sizes.dashboard.mediaSectionWidth
+                        active: root.paneActive
                     }
                 }
             }

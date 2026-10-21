@@ -15,6 +15,8 @@ import qs.services
 Item {
     id: root
 
+    property bool active: true
+
     readonly property real fadeAmount: 0.1
     property list<string> lyricList: Lyrics.lyrics
 
@@ -28,7 +30,13 @@ Item {
     }
 
     Component.onCompleted: {
-        root.reloadTrack();
+        if (root.active)
+            root.reloadTrack();
+    }
+
+    onActiveChanged: {
+        if (root.active)
+            root.reloadTrack();
     }
 
     layer.enabled: true
@@ -156,6 +164,8 @@ Item {
     ]
 
     Connections {
+        enabled: root.active
+
         function onActiveChanged() {
             root.reloadTrack();
         }
@@ -164,6 +174,8 @@ Item {
     }
 
     Connections {
+        enabled: root.active
+
         function onPostTrackChanged() {
             root.reloadTrack();
         }
@@ -194,6 +206,7 @@ Item {
                     id: shape
 
                     anchors.centerIn: parent
+                    active: root.active
                     implicitSize: Math.round(Tokens.sizes.dashboard.mediaSectionWidth / 5)
                     containsIcon: true // This removes the pentagon, which is not centered
                 }

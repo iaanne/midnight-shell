@@ -13,6 +13,14 @@ import qs.utils
 import "../dash" as DashTab
 
 Item {
+    id: root
+
+    property bool active: true
+
+    ServiceRef {
+        service: root.active && Config.dashboard.replaceMediaLyricsWithVisuals && (Players.active?.isPlaying ?? false) ? Audio.beatTracker : null
+    }
+
     ColumnLayout {
         id: layout
 
@@ -50,7 +58,9 @@ Item {
 
         Component {
             id: lyricComp
-            LyricList { }
+            LyricList {
+                active: root.active
+            }
         }
 
         Component {
@@ -63,7 +73,7 @@ Item {
 
                     anchors.fill: parent
 
-                    playing: Players.active?.isPlaying ?? false
+                    playing: root.active && !Config.dashboard.useMediaShapes && (Players.active?.isPlaying ?? false)
                     speed: Audio.beatTracker.bpm / Config.general.mediaGifSpeedAdjustment // qmllint disable unresolved-type
                     source: Paths.absolutePath(Config.paths.mediaGif)
                     asynchronous: true
@@ -82,6 +92,7 @@ Item {
 
                 DashTab.MediaShapes {
                     anchors.fill: parent
+                    active: root.active
                     visible: Config.dashboard.useMediaShapes
                 }
             }

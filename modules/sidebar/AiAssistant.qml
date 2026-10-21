@@ -19,6 +19,10 @@ import Caelestia.Blobs
 Item {
     id: root
 
+    // Set by sidebar/Content.qml. The sidebar can be kept alive while another
+    // tab is shown, so an inherited hidden state must also stop timers/spinners.
+    property bool active: true
+
     ListModel { id: chatHistory }
     ListModel { id: historySessionsModel }
 
@@ -63,10 +67,17 @@ Item {
         }
     }
     
-    onVisibleChanged: {
-        if (visible) {
-            fetchModels();
+    onActiveChanged: {
+        if (root.active)
+            root.ensureLoaded();
+    }
+
+    function ensureLoaded() {
+        if (!root.storeLoadStarted) {
+            root.storeLoadStarted = true;
+            storeDirProc.running = true;
         }
+        fetchModels();
     }
 
     function startTypingAnimation(text) {
@@ -80,8 +91,8 @@ Item {
     }
 
     Component.onCompleted: {
-        fetchModels();
-        storeDirProc.running = true;
+        if (root.active)
+            root.ensureLoaded();
     }
 
     Component.onDestruction: flushHistory();
@@ -273,7 +284,8 @@ Item {
 
     onSelectorOpenChanged: {
         if (selectorOpen) {
-            fetchModels();
+            if (root.active)
+                fetchModels();
             expandedSections = {};
         } else {
             modelSearch.text = "";
@@ -329,6 +341,7 @@ Item {
     property string pendingAssistantContent: ""
 
     property bool storeReady: false
+    property bool storeLoadStarted: false
     property string lastChatId: ""
     readonly property string storePath: `${Paths.data}/ai/chats.json`
     
@@ -1721,6 +1734,7 @@ Item {
                                      LoadingIndicator {
                                          width: 20
                                          height: 20
+                                         active: root.active && root.isThinking
                                          color: Colours.palette.m3primary
                                      }
                                      
@@ -1768,7 +1782,7 @@ Item {
                                              }
 
                                              SequentialAnimation {
-                                                 running: isThinking && !switchAnim.running
+                                                 running: root.active && isThinking && !switchAnim.running
                                                  loops: Animation.Infinite
                                                  NumberAnimation { target: mainText; property: "opacity"; from: 1.0; to: 0.4; duration: 800; easing.type: Easing.InOutSine }
                                                  NumberAnimation { target: mainText; property: "opacity"; from: 0.4; to: 1.0; duration: 800; easing.type: Easing.InOutSine }
@@ -1951,7 +1965,7 @@ Item {
                                          
                                          property bool cursorVisible: true
                                          Timer {
-                                             running: !delegateItem.isFinished
+                                             running: root.active && !delegateItem.isFinished
                                              repeat: true
                                              interval: 400
                                              onTriggered: thoughtContent.cursorVisible = !thoughtContent.cursorVisible
@@ -1986,7 +2000,7 @@ Item {
                                      
                                      property bool cursorVisible: true
                                      Timer {
-                                         running: !delegateItem.isFinished
+                                         running: root.active && !delegateItem.isFinished
                                          repeat: true
                                          interval: 400
                                          onTriggered: messageText.cursorVisible = !messageText.cursorVisible
@@ -2431,6 +2445,7 @@ Item {
                                   LoadingIndicator {
                                       width: 16
                                       height: 16
+                                      active: root.active && root.selectorOpen && statusLoading.visible
                                       color: Colours.palette.m3primary
                                   }
 

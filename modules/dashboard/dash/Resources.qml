@@ -9,6 +9,8 @@ import qs.services
 Item {
     id: root
 
+    property bool active: true
+
     anchors.top: parent.top
     anchors.bottom: parent.bottom
 
@@ -25,18 +27,18 @@ Item {
 
         Resource {
             icon: "memory"
-            value: Cpu.percentage
+            value: root.active ? Cpu.percentage : 0
         }
 
         Resource {
             icon: "memory_alt"
-            value: Memory.percentage
+            value: root.active ? Memory.percentage : 0
             fgColour: Colours.palette.m3tertiary
         }
 
         Resource {
             icon: "hard_disk"
-            value: Storage.percentage
+            value: root.active ? Storage.percentage : 0
             fgColour: Colours.palette.m3secondary
         }
     }
@@ -50,6 +52,8 @@ Item {
         strokeWidth: Tokens.sizes.dashboard.resourceProgressThickness
 
         Behavior on clampedVal {
+            enabled: root.active
+
             Anim {}
         }
 

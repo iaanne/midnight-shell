@@ -11,6 +11,10 @@ import qs.services
 Item {
     id: root
 
+    // Set by Content.qml; retires poll-driven animations while this pane is
+    // offscreen but retained by keepAlive.
+    property bool paneActive: true
+
     implicitWidth: placeholder.active ? Tokens.sizes.dashboard.perfPlaceholderWidth : content.implicitWidth
     implicitHeight: placeholder.active ? placeholder.implicitHeight + Tokens.padding.extraLarge * 2 : content.implicitHeight
 
@@ -75,9 +79,10 @@ Item {
                         icon: "memory"
                         label: Tr.tr("CPU")
                         subLabel: Cpu.name
-                        usage: Cpu.percentage
-                        temperature: Cpu.temperature
+                        usage: root.paneActive ? Cpu.percentage : 0
+                        temperature: root.paneActive ? Cpu.temperature : 0
                         accent: Colours.palette.m3primary
+                        active: root.paneActive
                     }
                 }
 
@@ -90,9 +95,10 @@ Item {
                         icon: "desktop_windows"
                         label: Tr.tr("GPU")
                         subLabel: Gpu.name || (Gpu.detecting ? Tr.tr("Detecting GPU...") : Tr.trCtx("None", "GPU name"))
-                        usage: Gpu.percentage
-                        temperature: Gpu.temperature
+                        usage: root.paneActive ? Gpu.percentage : 0
+                        temperature: root.paneActive ? Gpu.temperature : 0
                         accent: Colours.palette.m3secondary
+                        active: root.paneActive
                     }
                 }
             }
@@ -105,21 +111,27 @@ Item {
                     id: storageCard
 
                     active: Config.dashboard.performance.showStorage
-                    sourceComponent: StorageCard {}
+                    sourceComponent: StorageCard {
+                        active: root.paneActive
+                    }
                 }
 
                 WrappedLoader {
                     id: networkCard
 
                     active: Config.dashboard.performance.showNetwork
-                    sourceComponent: NetworkCard {}
+                    sourceComponent: NetworkCard {
+                        active: root.paneActive
+                    }
                 }
 
                 WrappedLoader {
                     id: memoryCard
 
                     active: Config.dashboard.performance.showMemory
-                    sourceComponent: MemoryCard {}
+                    sourceComponent: MemoryCard {
+                        active: root.paneActive
+                    }
                 }
             }
         }

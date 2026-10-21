@@ -15,6 +15,10 @@ import qs.utils
 Item {
     id: root
 
+    // Set by Dash.qml from the owning dashboard pane. It is false when the
+    // pane is clipped offscreen or the dashboard is closed.
+    property bool active: true
+
     property real playerProgress: {
         const active = Players.active;
         return active?.length ? (active.position % active.length) / active.length : 0;
@@ -27,13 +31,15 @@ Item {
     implicitWidth: Tokens.sizes.dashboard.mediaWidth
 
     Behavior on playerProgress {
+        enabled: root.active
+
         Anim {
             type: Anim.StandardLarge
         }
     }
 
     Timer {
-        running: Players.active?.isPlaying ?? false
+        running: root.active && (Players.active?.isPlaying ?? false)
         interval: GlobalConfig.dashboard.mediaUpdateInterval
         triggeredOnStart: true
         repeat: true
@@ -41,7 +47,7 @@ Item {
     }
 
     ServiceRef {
-        service: Audio.beatTracker
+        service: root.active && (Players.active?.isPlaying ?? false) ? Audio.beatTracker : null
     }
 
     CircularProgress {
@@ -59,7 +65,7 @@ Item {
         wavy: true
         waveFrequency: 8
         waveDuration: 2000
-        wavePaused: !Players.active?.isPlaying
+        wavePaused: !root.active || !Players.active?.isPlaying
     }
 
     CoverArt {
@@ -178,7 +184,7 @@ Item {
 
             anchors.fill: parent
 
-            playing: Players.active?.isPlaying ?? false
+            playing: root.active && !Config.dashboard.useMediaShapes && (Players.active?.isPlaying ?? false)
             speed: Audio.beatTracker.bpm / Config.general.mediaGifSpeedAdjustment // qmllint disable unresolved-type
             source: Paths.absolutePath(Config.paths.mediaGif)
             asynchronous: true
@@ -197,6 +203,7 @@ Item {
 
         MediaShapes {
             anchors.fill: parent
+            active: root.active
             visible: Config.dashboard.useMediaShapes
         }
     }

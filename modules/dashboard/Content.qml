@@ -177,11 +177,18 @@ Item {
                         }
 
                         onLoaded: {
-                            // The Last.fm pane should only poll while it is the
-                            // dashboard's current tab; keepAlive may keep it
-                            // loaded on other tabs.
-                            if (item && modelData.component === lastfmComponent)
+                            // Last.fm owns its polling and computes activity
+                            // from tabIndex. Other panes use paneActive so
+                            // their animations and timers stop both when they
+                            // are clipped offscreen and when the dashboard is
+                            // closed (keepAlive can retain the pane itself).
+                            if (!item)
+                                return;
+                            if (modelData.component === lastfmComponent) {
                                 item.tabIndex = index;
+                            } else {
+                                item.paneActive = Qt.binding(() => root.screenState.dashboard && paneLoader.index === root.screenState.dashboardTab);
+                            }
                         }
 
                         onIndexChanged: {
@@ -190,13 +197,15 @@ Item {
                         }
 
                         Component.onCompleted: active = Qt.binding(() => {
-                            if (Config.dashboard.keepAlive && paneAlive)
-                                return true;
                             if (index === view.currentIndex)
                                 return true;
-                            const vx = Math.floor(view.visibleArea.xPosition * view.contentWidth);
-                            const vex = Math.floor(vx + view.visibleArea.widthRatio * view.contentWidth);
-                            return (vx >= x && vx <= x + implicitWidth) || (vex >= x && vex <= x + implicitWidth);
+                            if (Config.dashboard.keepAlive && paneAlive)
+                                return true;
+                            // Inactive Loaders have no width, so keep the
+                            // neighbours around to give the Flickable a scroll
+                            // target. Without this, a zero-sized start-up row
+                            // makes every tab look visible and loads all panes.
+                            return Math.abs(index - view.currentIndex) <= 1;
                         })
                     }
                 }

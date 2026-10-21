@@ -9,11 +9,24 @@ import qs.utils
 Item {
     id: root
 
+    // Set by Content.qml. Weather is already warmed by shell.qml; only refresh
+    // when this pane first becomes the visible dashboard tab.
+    property bool paneActive: false
+    property bool loadedOnce: false
+
     readonly property var today: Weather.forecast && Weather.forecast.length > 0 ? Weather.forecast[0] : null
+
+    function reloadWhenVisible(): void {
+        if (!root.paneActive || root.loadedOnce)
+            return;
+        root.loadedOnce = true;
+        Weather.reload();
+    }
 
     implicitWidth: layout.implicitWidth > 800 ? layout.implicitWidth : 840
     implicitHeight: layout.implicitHeight
-    Component.onCompleted: Weather.reload()
+    Component.onCompleted: root.reloadWhenVisible()
+    onPaneActiveChanged: root.reloadWhenVisible()
 
     ColumnLayout {
         id: layout

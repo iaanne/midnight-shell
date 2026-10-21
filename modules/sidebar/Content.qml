@@ -15,6 +15,11 @@ Item {
     property var utilities
     property bool sidebarStreaming: false
 
+    // The AI and news tabs are not the default view. Build them on first use,
+    // then keep them alive so drafts/streams are not lost when switching tabs.
+    property bool aiLoaded: false
+    property bool newsLoaded: false
+
     readonly property bool isBarHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
     readonly property bool showPopoutSeparator: isBarHorizontal && root.screenState.sidebar && popouts && popouts.hasCurrent && popouts.currentName !== "dockhover" && popouts.currentName !== "dockcontext" && popouts.currentName !== "activewindow" && popouts.currentName !== "github"
 
@@ -212,19 +217,33 @@ Item {
                         Behavior on opacity { Anim { type: Anim.DefaultSpatial } }
                     }
 
-                    AiAssistant {
-                        id: aiAssistant
+                    Loader {
+                        id: aiLoader
+
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         width: parent.width
                         x: root.activeTab === "ai" ? 0 : (indicator.activeIndex < 1 ? width : -width)
                         opacity: root.activeTab === "ai" ? 1 : 0
                         visible: opacity > 0
+                        active: root.activeTab === "ai" || root.aiLoaded
 
-                        Connections {
-                            target: aiAssistant
-                            function onIsStreamingChanged() {
-                                root.sidebarStreaming = aiAssistant.isStreaming;
+                        onActiveChanged: {
+                            if (active)
+                                root.aiLoaded = true;
+                        }
+
+                        sourceComponent: AiAssistant {
+                            id: aiAssistant
+
+                            active: root.activeTab === "ai" && root.screenState.sidebar
+
+                            Connections {
+                                target: aiAssistant
+
+                                function onIsStreamingChanged() {
+                                    root.sidebarStreaming = aiAssistant.isStreaming;
+                                }
                             }
                         }
 
@@ -232,14 +251,26 @@ Item {
                         Behavior on opacity { Anim { type: Anim.DefaultSpatial } }
                     }
 
-                    News {
+                    Loader {
+                        id: newsLoader
+
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         width: parent.width
                         x: root.activeTab === "news" ? 0 : width
                         opacity: root.activeTab === "news" ? 1 : 0
                         visible: opacity > 0
-                        
+                        active: root.activeTab === "news" || root.newsLoaded
+
+                        onActiveChanged: {
+                            if (active)
+                                root.newsLoaded = true;
+                        }
+
+                        sourceComponent: News {
+                            active: root.activeTab === "news" && root.screenState.sidebar
+                        }
+
                         Behavior on x { Anim { type: Anim.DefaultSpatial } }
                         Behavior on opacity { Anim { type: Anim.DefaultSpatial } }
                     }

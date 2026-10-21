@@ -11,6 +11,10 @@ import qs.services
 Item {
     id: root
 
+    // Set by sidebar/Content.qml; false while another tab is shown or the
+    // sidebar is closed but kept alive.
+    property bool active: true
+    property bool fetchAttempted: false
     property bool isFetching: false
     property string errorMessage: ""
     
@@ -21,10 +25,19 @@ Item {
     readonly property color cOnSurfaceVariant: Colours.palette.m3onSurfaceVariant
     readonly property color cError: Colours.palette.m3error
 
-    Component.onCompleted: fetchNews()
+    Component.onCompleted: {
+        if (root.active && !root.fetchAttempted)
+            root.fetchNews();
+    }
+
+    onActiveChanged: {
+        if (root.active && !root.fetchAttempted && newsModel.count === 0 && !root.isFetching)
+            root.fetchNews();
+    }
 
     function fetchNews() {
         if (root.isFetching) return;
+        root.fetchAttempted = true;
         root.isFetching = true;
         root.errorMessage = "";
         

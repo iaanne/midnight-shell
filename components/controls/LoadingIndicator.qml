@@ -19,9 +19,12 @@ MaterialShape {
     property bool containsIcon
 
     property bool animated: true
+    // Local `visible` stays true when an ancestor is hidden, so callers inside
+    // clipped/slide-over content must also mark themselves inactive.
+    property bool active: true
     // A running spinner keeps the whole window rendering every frame. Hidden
     // indicators (an unshown tab, a closed panel, a covered widget) must stop.
-    readonly property bool running: animated && visible
+    readonly property bool running: animated && active && visible
     property int morphAnimRotation: 60
     property real morphScale: 0.14
     property alias rotateAnimDuration: rotateAnim.duration

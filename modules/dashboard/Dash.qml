@@ -11,6 +11,10 @@ GridLayout {
     required property ScreenState screenState
     required property FileDialog facePicker
 
+    // Set by Content.qml. It stays true only while this pane is the visible
+    // dashboard tab, not merely while keepAlive retains it.
+    property bool paneActive: true
+
     rowSpacing: Tokens.spacing.medium
     columnSpacing: Tokens.spacing.medium
 
@@ -83,6 +87,8 @@ GridLayout {
 
         Resources {
             id: resources
+
+            active: root.paneActive
         }
     }
 
@@ -97,6 +103,8 @@ GridLayout {
 
         Media {
             id: media
+
+            active: root.paneActive
         }
     }
 

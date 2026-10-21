@@ -11,6 +11,8 @@ import qs.utils
 StyledRect {
     id: root
 
+    property bool active: true
+
     readonly property color accent: Colours.palette.m3tertiary
 
     color: Colours.tPalette.m3surfaceContainer
@@ -53,6 +55,8 @@ StyledRect {
             value: Memory.percentage
 
             Behavior on clampedVal {
+                enabled: root.active
+
                 Anim {}
             }
 

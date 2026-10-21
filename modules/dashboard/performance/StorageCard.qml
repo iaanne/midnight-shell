@@ -12,6 +12,8 @@ import qs.utils
 StyledRect {
     id: root
 
+    property bool active: true
+
     readonly property color accent: Colours.palette.m3secondary
     readonly property real percentage: Storage.primaryDisk?.perc ?? 0
 
@@ -44,6 +46,8 @@ StyledRect {
                 sweepAngle: 270
 
                 Behavior on clampedVal {
+                    enabled: root.active
+
                     Anim {}
                 }
 

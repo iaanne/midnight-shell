@@ -11,6 +11,8 @@ import qs.services
 ColumnLayout {
     id: root
 
+    property bool active: true
+
     readonly property bool hasUnknownLength: (Players.active?.length ?? 0) > 2147483647
 
     function lengthStr(length: int): string {
@@ -29,7 +31,7 @@ ColumnLayout {
     spacing: Tokens.spacing.extraSmall
 
     Timer {
-        running: Players.active?.isPlaying ?? false
+        running: root.active && (Players.active?.isPlaying ?? false)
         interval: GlobalConfig.dashboard.mediaUpdateInterval
         triggeredOnStart: true
         repeat: true
@@ -91,7 +93,7 @@ ColumnLayout {
             value: Players.active ? Players.active.position / (Players.active.length || 1) : 0
             enabled: (Players.active?.canSeek ?? false) && !root.hasUnknownLength
             wavy: true
-            animateWave: Players.active?.isPlaying ?? false
+            animateWave: root.active && (Players.active?.isPlaying ?? false)
             waveFrequency: 5
             waveDuration: 2000
             interactionOnMove: false

@@ -18,6 +18,8 @@ StyledRect {
     required property real usage
     required property real temperature
 
+    property bool active: true
+
     color: Colours.tPalette.m3surfaceContainer
     radius: Tokens.rounding.extraLarge
 
@@ -39,6 +41,8 @@ StyledRect {
         value: root.usage
 
         Behavior on clampedVal {
+            enabled: root.active
+
             Anim {}
         }
 
