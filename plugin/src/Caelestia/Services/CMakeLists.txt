@@ -26,6 +26,9 @@ qml_module(caelestia-services
         diskinfo.cpp
         storage.cpp
         lyriccandidate.cpp
+        lyricstypes.cpp
+        lyricsparsers.cpp
+        lyricsengine.cpp
         lyrics.cpp
         qrc3des.cpp
         qqlyric.cpp

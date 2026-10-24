@@ -4,16 +4,14 @@
 #include <qjsonobject.h>
 #include <qnetworkaccessmanager.h>
 #include <qnetworkreply.h>
+#include <qpointer.h>
 #include <qtimer.h>
 
 #include "lyriccandidate.hpp"
+#include "lyricsengine.hpp"
+#include "lyricstypes.hpp"
 
 namespace caelestia::services {
-
-struct LyricLine {
-    qreal time = 0.0;
-    QString text;
-};
 
 class Lyrics : public QObject {
     Q_OBJECT
@@ -21,6 +19,15 @@ class Lyrics : public QObject {
     QML_SINGLETON
 
     Q_PROPERTY(QStringList lyrics READ lyrics NOTIFY lyricsChanged)
+    // Rich lines ({"t", "e", "x", "w", "voice", "background", "group"}) for word-synced rendering.
+    Q_PROPERTY(QVariantList lyricLines READ lyricLines NOTIFY lyricLinesChanged)
+    Q_PROPERTY(QVariantList providers READ providers NOTIFY providersChanged)
+    Q_PROPERTY(QString sourceName READ sourceName NOTIFY sourceChanged)
+    Q_PROPERTY(QString sourceUrl READ sourceUrl NOTIFY sourceChanged)
+    Q_PROPERTY(QString sourceText READ sourceText NOTIFY sourceChanged)
+    Q_PROPERTY(bool wordSynced READ wordSynced NOTIFY lyricsChanged)
+    Q_PROPERTY(bool timedLyrics READ timedLyrics NOTIFY lyricsChanged)
+    Q_PROPERTY(bool instrumental READ instrumental NOTIFY lyricsChanged)
     Q_PROPERTY(caelestia::config::LyricsBackend::Enum backend READ backend NOTIFY backendChanged)
     Q_PROPERTY(caelestia::config::LyricsBackend::Enum preferredBackend READ preferredBackend WRITE setPreferredBackend
             NOTIFY preferredBackendChanged)
@@ -41,6 +48,14 @@ public:
     explicit Lyrics(QObject* parent = nullptr);
 
     [[nodiscard]] QStringList lyrics() const;
+    [[nodiscard]] QVariantList lyricLines() const;
+    [[nodiscard]] QVariantList providers() const;
+    [[nodiscard]] QString sourceName() const;
+    [[nodiscard]] QString sourceUrl() const;
+    [[nodiscard]] QString sourceText() const;
+    [[nodiscard]] bool wordSynced() const;
+    [[nodiscard]] bool timedLyrics() const;
+    [[nodiscard]] bool instrumental() const;
     [[nodiscard]] LyricsBackend backend() const;
     [[nodiscard]] LyricsBackend preferredBackend() const;
     void setPreferredBackend(LyricsBackend value);
@@ -62,13 +77,22 @@ public:
     [[nodiscard]] Q_INVOKABLE int indexForTime(qreal time) const;
     [[nodiscard]] Q_INVOKABLE qreal timeForIndex(int index) const;
 
-    Q_INVOKABLE void setTrack(
-        const QString& artist, const QString& title, const QString& album = {}, qreal duration = 0.0);
+    Q_INVOKABLE void setTrack(const QString& artist, const QString& title, const QString& album = {},
+        qreal duration = 0.0, const QString& fileUrl = {});
     Q_INVOKABLE void clearTrack();
     Q_INVOKABLE void refresh();
+    Q_INVOKABLE void setProviderEnabled(const QString& id, bool enabled);
+    Q_INVOKABLE void moveProvider(int from, int to);
+    Q_INVOKABLE void resetProviders();
+    // Appends newly discovered plugin providers to the config (disabled) so they
+    // show up in Settings without hand-editing services.json.
+    Q_INVOKABLE void syncProviders();
 
 signals:
     void lyricsChanged();
+    void lyricLinesChanged();
+    void providersChanged();
+    void sourceChanged();
     void backendChanged();
     void preferredBackendChanged();
     void romanizedChanged();
@@ -85,6 +109,9 @@ private:
     void setBackend(LyricsBackend value);
     void setLoading(bool value);
     void setLines(QVector<LyricLine> lines, LyricsBackend source, QVector<LyricLine> romanized = {});
+    void setResult(LyricsResult result);
+    [[nodiscard]] QStringList enabledProviderIds() const;
+    void onProvidersChanged();
     void updateActiveLyrics();
     [[nodiscard]] bool acceptRomanized(const QVector<LyricLine>& lines) const;
     void clearLines();
@@ -149,6 +176,12 @@ private:
 
     QNetworkAccessManager* m_nam;
     QTimer* m_loadDebounce;
+    LyricsEngine* m_engine;
+    LyricsResult m_result;
+    bool m_forceRefresh = false;
+    // A failed per-track pin falls back to the provider engine once, without
+    // forgetting the saved selection for future loads.
+    bool m_ignoreSavedSelection = false;
 
     QVector<LyricLine> m_lines;
     QVector<LyricLine> m_linesOriginal;
@@ -174,6 +207,7 @@ private:
     QString m_artist;
     QString m_title;
     QString m_album;
+    QString m_fileUrl;
     qreal m_duration = 0.0;
 
     int m_currentRequestId = 0;

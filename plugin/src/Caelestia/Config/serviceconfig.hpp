@@ -44,7 +44,20 @@ class ServiceConfig : public settings::ObjectNode {
         DEFAULT_ARG({
             vmap({ { u"from"_s, u"com.github.th_ch.youtube_music"_s }, { u"to"_s, u"YT Music"_s } }),
         }))
+    // Kept for reading old configs. New installs use lyricsProviders.
     CONFIG_GLOBAL_ENUM_PROPERTY(LyricsBackend, lyricsBackend, LyricsBackend::Auto)
+    // Provider priority. Local sidecars and the lyrics directory are always checked first.
+    CONFIG_GLOBAL_LIST(EntryList, lyricsProviders,
+        DEFAULT_ARG({
+            LIST_ENTRY(betterlyrics, true),
+            LIST_ENTRY(unison, true),
+            LIST_ENTRY(lyricsplus, true),
+            LIST_ENTRY(kugou, true),
+            LIST_ENTRY(lrclib, true),
+            LIST_ENTRY(youtubemusic, true),
+            LIST_ENTRY(netease, true),
+            LIST_ENTRY(qqmusic, true),
+        }))
     // Prefer latin/romanized lyrics (NetEase romalrc / QQ Music roma) when available
     CONFIG_GLOBAL_PROPERTY(bool, lyricsRomanized, false)
     // Bluetooth auto-reconnect

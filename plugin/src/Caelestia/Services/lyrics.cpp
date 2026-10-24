@@ -1,18 +1,25 @@
 #include "lyrics.hpp"
 
+#include <qdir.h>
 #include <qdiriterator.h>
+#include <qfile.h>
 #include <qfileinfo.h>
 #include <qjsonarray.h>
+#include <qjsondocument.h>
 #include <qnetworkcookiejar.h>
 #include <qpair.h>
+#include <qregularexpression.h>
 #include <qsavefile.h>
 #include <qurlquery.h>
 
 #include <algorithm>
+#include <limits>
+#include <utility>
 
 #include "config/rootnodes.hpp"
 #include "config/serviceconfig.hpp"
 #include "config/userpaths.hpp"
+#include "lyricsparsers.hpp"
 #include "qqlyric.hpp"
 #include "romanizer.hpp"
 
@@ -204,7 +211,8 @@ constexpr unsigned int k_transferTimeoutMs = 15000;
 Lyrics::Lyrics(QObject* parent)
     : QObject(parent)
     , m_nam(new QNetworkAccessManager(this))
-    , m_loadDebounce(new QTimer(this)) {
+    , m_loadDebounce(new QTimer(this))
+    , m_engine(new LyricsEngine(m_nam, this)) {
     m_loadDebounce->setSingleShot(true);
     m_loadDebounce->setInterval(k_loadDebounceMs);
     QObject::connect(m_loadDebounce, &QTimer::timeout, this, &Lyrics::doLoad);
@@ -220,12 +228,123 @@ Lyrics::Lyrics(QObject* parent)
         svcCfg, &config::ServiceConfig::lyricsBackendChanged, this, &Lyrics::onPreferredBackendConfigChanged);
     QObject::connect(svcCfg, &config::ServiceConfig::lyricsRomanizedChanged, this, &Lyrics::onRomanizedConfigChanged);
     QObject::connect(paths, &config::UserPaths::lyricsDirChanged, this, &Lyrics::onLyricsDirChanged);
+    QObject::connect(svcCfg->lyricsProviders(), &settings::ListNode::elementsChanged, this,
+        [this] { onProvidersChanged(); });
 
     loadLyricsMap();
+    syncProviders();
 }
 
 QStringList Lyrics::lyrics() const {
     return m_lyrics;
+}
+
+QVariantList Lyrics::lyricLines() const {
+    const auto& lines = m_showRomanized && !m_linesRomanized.isEmpty() ? m_linesRomanized : m_linesOriginal;
+    QVariantList list = lyricLinesToVariant(lines);
+    if (!list.isEmpty() || !m_hasLyrics)
+        return list;
+
+    // Plain-only and instrumental results have no timing but still need to be
+    // visible. Negative timestamps keep the controller from highlighting them.
+    if (m_result.instrumental) {
+        list.append(QVariantMap{ { u"t"_s, -1.0 }, { u"x"_s, tr("Instrumental") } });
+        return list;
+    }
+    const QStringList plain = m_result.plain.split(u'\n', Qt::SkipEmptyParts);
+    for (const QString& line : plain) {
+        const QString text = line.trimmed();
+        if (!text.isEmpty())
+            list.append(QVariantMap{ { u"t"_s, -1.0 }, { u"x"_s, text } });
+    }
+    return list;
+}
+
+QVariantList Lyrics::providers() const {
+    QVariantList list;
+    const auto* cfg = config::ConfigSingleton::instance();
+    const auto* entries = cfg->services()->lyricsProviders();
+    const auto available = LyricsEngine::availableProviders();
+
+    for (qsizetype i = 0; i < entries->count(); ++i) {
+        const auto* entry = entries->at(i);
+        if (!entry)
+            continue;
+        QVariantMap map;
+        map.insert(u"id"_s, entry->id());
+        map.insert(u"enabled"_s, entry->enabled());
+        bool known = false;
+        for (const auto& info : available) {
+            if (info.id != entry->id())
+                continue;
+            map.insert(u"name"_s, info.name);
+            map.insert(u"url"_s, info.url);
+            map.insert(u"wordSync"_s, info.wordSync);
+            map.insert(u"plugin"_s, info.plugin);
+            known = true;
+            break;
+        }
+        if (!known) {
+            map.insert(u"name"_s, entry->id());
+            map.insert(u"url"_s, QString());
+            map.insert(u"wordSync"_s, false);
+            map.insert(u"plugin"_s, entry->id().startsWith(u"plugin_"_s));
+        }
+        list.append(map);
+    }
+
+    // Discovered plugins need a config entry before they can be used. Show them
+    // disabled so the provider list stays a faithful view of the saved order.
+    for (const auto& info : available) {
+        if (!info.plugin)
+            continue;
+        bool present = false;
+        for (const auto& value : list) {
+            if (value.toMap().value(u"id"_s).toString() == info.id) {
+                present = true;
+                break;
+            }
+        }
+        if (present)
+            continue;
+        list.append(settings::vmap({
+            { u"id"_s, info.id },
+            { u"enabled"_s, false },
+            { u"name"_s, info.name },
+            { u"url"_s, info.url },
+            { u"wordSync"_s, info.wordSync },
+            { u"plugin"_s, true },
+        }));
+    }
+    return list;
+}
+
+QString Lyrics::sourceName() const {
+    if (!m_result.attributionName.isEmpty())
+        return m_result.attributionName;
+    if (m_result.source == u"local"_s)
+        return u"Local"_s;
+    return LyricsEngine::providerName(m_result.source);
+}
+
+QString Lyrics::sourceUrl() const {
+    return m_result.attributionUrl;
+}
+
+QString Lyrics::sourceText() const {
+    return m_result.attributionText;
+}
+
+bool Lyrics::wordSynced() const {
+    return m_result.wordSynced();
+}
+
+bool Lyrics::timedLyrics() const {
+    return !m_result.synced.isEmpty();
+}
+
+bool Lyrics::instrumental() const {
+    return m_result.instrumental;
 }
 
 LyricsBackend Lyrics::backend() const {
@@ -261,6 +380,14 @@ void Lyrics::setRomanized(bool value) {
 
     config::ConfigSingleton::instance()->services()->set_lyricsRomanized(value);
 
+    if (value && m_result.romanized.isEmpty() && !m_result.synced.isEmpty() && !isLatinLrc(m_result.synced)) {
+        const auto lines = romanizeLines(m_result.synced);
+        if (!lines.isEmpty()) {
+            m_result.romanized = lines;
+            m_linesRomanized = lines;
+            m_lyricsRomanized = toTextList(lines);
+        }
+    }
     updateActiveLyrics();
     scheduleLoad();
 }
@@ -276,15 +403,13 @@ void Lyrics::setShowRomanized(bool value) {
     m_showRomanized = value;
     emit showRomanizedChanged();
 
+    // updateActiveLyrics() derives the flag from the global romanization
+    // setting, so it would immediately undo a manual toggle back to original.
     const QStringList active = value ? m_lyricsRomanized : m_lyricsOriginal;
     if (active != m_lyrics) {
         m_lyrics = active;
     }
-    const bool hasLyrics = !m_lyrics.isEmpty();
-    if (hasLyrics != m_hasLyrics) {
-        m_hasLyrics = hasLyrics;
-        emit hasLyricsChanged();
-    }
+    emit lyricLinesChanged();
     emit lyricsChanged();
 }
 
@@ -316,10 +441,11 @@ void Lyrics::setSelectedCandidate(const LyricCandidate& value) {
     // Invalidate before cancelling: an aborted reply still emits finished
     const int reqId = newRequestId();
     cancelInFlight();
+    m_engine->cancel();
 
     loadCandidate(value, reqId);
 
-    if (!m_settingFromPrefs) {
+    if (!m_settingFromPrefs && !m_ignoreSavedSelection) {
         persistTrackPrefs();
     }
 }
@@ -359,17 +485,21 @@ void Lyrics::loadCandidate(const LyricCandidate& value, int reqId) {
         if (f.open(QIODevice::ReadOnly)) {
             const QString text = QString::fromUtf8(f.readAll());
             const auto lines = parseLrc(text);
-            // Manual candidate selection wins: show non-latin lyrics as-is
-            setLines(lines, LyricsBackend::Local);
-            setLoading(false);
+            if (!lines.isEmpty()) {
+                // Manual candidate selection wins: show non-latin lyrics as-is
+                setLines(lines, LyricsBackend::Local);
+                setLoading(false);
+                return;
+            }
+            qCWarning(lcLyrics) << "selectedCandidate: local file has no lyrics" << value.id();
         } else {
             qCWarning(lcLyrics) << "selectedCandidate: cannot open local file" << value.id();
-            setLoading(false);
         }
+        finishWithFallback(reqId);
     } else {
         // Never leave the UI on "Loading" for an unusable saved selection
         qCWarning(lcLyrics) << "selectedCandidate: unsupported backend for id" << value.id();
-        setLoading(false);
+        finishWithFallback(reqId);
     }
 }
 
@@ -409,7 +539,7 @@ int Lyrics::indexForTime(qreal time) const {
     if (m_lines.isEmpty()) {
         return -1;
     }
-    const qreal target = time - m_offset + k_indexFudge;
+    const qreal target = time - m_offset / 1000.0 + k_indexFudge;
     qsizetype lo = 0;
     qsizetype hi = m_lines.size();
     while (lo < hi) {
@@ -427,25 +557,30 @@ qreal Lyrics::timeForIndex(int index) const {
     if (index < 0 || index >= m_lines.size()) {
         return -1.0;
     }
-    return m_lines.at(index).time + m_offset;
+    return m_lines.at(index).time + m_offset / 1000.0;
 }
 
-void Lyrics::setTrack(const QString& artist, const QString& title, const QString& album, qreal duration) {
+void Lyrics::setTrack(
+    const QString& artist, const QString& title, const QString& album, qreal duration, const QString& fileUrl) {
     const QString a = artist.trimmed();
     const QString t = title.trimmed();
 
-    if (a == m_artist && t == m_title && album == m_album && qFuzzyCompare(duration + 1.0, m_duration + 1.0)) {
+    if (a == m_artist && t == m_title && album == m_album && fileUrl == m_fileUrl
+        && qFuzzyCompare(duration + 1.0, m_duration + 1.0)) {
         return;
     }
 
     // Invalidate in-flight chains before cancelling: an aborted reply still emits finished
     newRequestId();
     cancelInFlight();
+    m_engine->cancel();
 
     m_artist = a;
     m_title = t;
     m_album = album;
+    m_fileUrl = fileUrl;
     m_duration = duration;
+    m_ignoreSavedSelection = false;
     emit trackChanged();
 
     scheduleLoad();
@@ -455,18 +590,109 @@ void Lyrics::clearTrack() {
     // Invalidate in-flight chains before cancelling: an aborted reply still emits finished
     newRequestId();
     cancelInFlight();
+    m_engine->cancel();
     m_artist.clear();
     m_title.clear();
     m_album.clear();
+    m_fileUrl.clear();
     m_duration = 0.0;
+    m_ignoreSavedSelection = false;
     emit trackChanged();
 
     clearCandidates();
+    if (m_selected.isValid()) {
+        m_selected = LyricCandidate();
+        emit selectedCandidateChanged();
+    }
     clearLines();
+    m_result = {};
+    m_linesOriginal.clear();
+    m_linesRomanized.clear();
+    m_lines.clear();
+    m_lyricsOriginal.clear();
+    m_lyricsRomanized.clear();
+    m_lyrics.clear();
+    m_fallbackLines.clear();
+    updateActiveLyrics();
+    emit sourceChanged();
     setLoading(false);
 }
 
 void Lyrics::refresh() {
+    m_forceRefresh = true;
+    scheduleLoad();
+}
+
+QStringList Lyrics::enabledProviderIds() const {
+    QStringList ids;
+    const auto* list = config::ConfigSingleton::instance()->services()->lyricsProviders();
+    for (qsizetype i = 0; i < list->count(); ++i) {
+        const auto* entry = list->at(i);
+        if (entry && entry->enabled())
+            ids.append(entry->id());
+    }
+    return ids;
+}
+
+void Lyrics::setProviderEnabled(const QString& id, bool enabled) {
+    auto* list = config::ConfigSingleton::instance()->services()->lyricsProviders();
+    for (qsizetype i = 0; i < list->count(); ++i) {
+        auto* entry = list->at(i);
+        if (entry && entry->id() == id) {
+            entry->set_enabled(enabled);
+            emit providersChanged();
+            scheduleLoad();
+            return;
+        }
+    }
+    if (enabled)
+        static_cast<void>(list->append(settings::vmap({ { u"id"_s, id }, { u"enabled"_s, true } })));
+    emit providersChanged();
+    scheduleLoad();
+}
+
+void Lyrics::moveProvider(int from, int to) {
+    auto* list = config::ConfigSingleton::instance()->services()->lyricsProviders();
+    if (from == to)
+        return;
+    list->move(from, to);
+    emit providersChanged();
+    scheduleLoad();
+}
+
+void Lyrics::resetProviders() {
+    auto* list = config::ConfigSingleton::instance()->services()->lyricsProviders();
+    list->resetToDefaults();
+    syncProviders();
+    emit providersChanged();
+    scheduleLoad();
+}
+
+void Lyrics::syncProviders() {
+    auto* list = config::ConfigSingleton::instance()->services()->lyricsProviders();
+    QStringList known;
+    known.reserve(list->count());
+    for (qsizetype i = 0; i < list->count(); ++i) {
+        if (const auto* entry = list->at(i))
+            known.append(entry->id());
+    }
+
+    // Built-ins added after the config was written are appended enabled (they are
+    // part of the default set). Newly discovered plugins come in disabled so they
+    // show up in settings without silently changing lookup results.
+    bool changed = false;
+    for (const auto& info : LyricsEngine::availableProviders()) {
+        if (known.contains(info.id))
+            continue;
+        static_cast<void>(list->append(settings::vmap({ { u"id"_s, info.id }, { u"enabled"_s, !info.plugin } })));
+        changed = true;
+    }
+    if (changed)
+        emit providersChanged();
+}
+
+void Lyrics::onProvidersChanged() {
+    emit providersChanged();
     scheduleLoad();
 }
 
@@ -487,27 +713,69 @@ void Lyrics::setLoading(bool value) {
 }
 
 void Lyrics::setLines(QVector<LyricLine> lines, LyricsBackend source, QVector<LyricLine> romanized) {
-    const auto byTime = [](const LyricLine& a, const LyricLine& b) {
-        return a.time < b.time;
-    };
-    std::ranges::sort(lines, byTime);
-    std::ranges::sort(romanized, byTime);
+    LyricsResult result;
+    result.found = true;
+    result.synced = std::move(lines);
+    result.romanized = std::move(romanized);
+    result.source = backendKey(source);
+    if (source == LyricsBackend::LRCLIB)
+        result.attributionName = u"LRCLIB"_s;
+    else if (source == LyricsBackend::NetEase)
+        result.attributionName = u"NetEase"_s;
+    else if (source == LyricsBackend::QQMusic)
+        result.attributionName = u"QQ Music"_s;
+    else if (source == LyricsBackend::Local)
+        result.attributionName = u"Local"_s;
+    setResult(std::move(result));
+    setBackend(source);
+}
 
-    // On-device romanization: only when no curated variant exists for this source
-    if (m_romanized && romanized.isEmpty() && !lines.isEmpty() && !isLatinLrc(lines)) {
-        romanized = romanizeLines(lines);
+void Lyrics::setResult(LyricsResult result) {
+    sortLyricLines(result.synced);
+    sortLyricLines(result.romanized);
+    stripLyricMarkup(result);
+
+    if (m_romanized && result.romanized.isEmpty() && !result.synced.isEmpty()
+        && !isLatinLrc(result.synced)) {
+        auto romanized = romanizeLines(result.synced);
+        if (!romanized.isEmpty())
+            result.romanized = std::move(romanized);
     }
 
-    m_linesOriginal = lines;
-    m_linesRomanized = romanized;
-    m_linesSetThisLoad = true;
-    // Timed vector drives indexForTime; variants share timestamps, prefer the original
-    m_lines = !lines.isEmpty() ? std::move(lines) : std::move(romanized);
+    m_result = std::move(result);
+    m_linesOriginal = m_result.synced;
+    m_linesRomanized = m_result.romanized;
+    m_lines = !m_linesOriginal.isEmpty() ? m_linesOriginal : m_linesRomanized;
     m_lyricsOriginal = toTextList(m_linesOriginal);
     m_lyricsRomanized = toTextList(m_linesRomanized);
+    if (m_lyricsOriginal.isEmpty() && !m_result.plain.trimmed().isEmpty()) {
+        const QStringList plain = m_result.plain.split(u'\n');
+        for (const QString& line : plain) {
+            const QString text = line.trimmed();
+            if (!text.isEmpty())
+                m_lyricsOriginal.append(text);
+        }
+    }
 
-    setBackend(source);
+    if (m_result.instrumental && m_lyricsOriginal.isEmpty()) {
+        m_lyricsOriginal = { tr("Instrumental") };
+        m_lyrics = m_lyricsOriginal;
+    }
+
+    m_linesSetThisLoad = true;
+    if (m_result.source.compare(u"lrclib"_s, Qt::CaseInsensitive) == 0)
+        setBackend(LyricsBackend::LRCLIB);
+    else if (m_result.source.compare(u"netease"_s, Qt::CaseInsensitive) == 0)
+        setBackend(LyricsBackend::NetEase);
+    else if (m_result.source.compare(u"qqmusic"_s, Qt::CaseInsensitive) == 0)
+        setBackend(LyricsBackend::QQMusic);
+    else if (m_result.source.compare(u"local"_s, Qt::CaseInsensitive) == 0)
+        setBackend(LyricsBackend::Local);
+    else
+        setBackend(LyricsBackend::Auto);
+
     updateActiveLyrics();
+    emit sourceChanged();
 }
 
 void Lyrics::updateActiveLyrics() {
@@ -528,11 +796,12 @@ void Lyrics::updateActiveLyrics() {
         m_lyrics = active;
     }
 
-    const bool hasLyrics = !m_lyrics.isEmpty();
+    const bool hasLyrics = m_result.found && !m_lyrics.isEmpty();
     if (hasLyrics != m_hasLyrics) {
         m_hasLyrics = hasLyrics;
         emit hasLyricsChanged();
     }
+    emit lyricLinesChanged();
     // lyricsChanged is also the NOTIFY for hasLyrics, always emit like setLines did before
     emit lyricsChanged();
 }
@@ -551,6 +820,7 @@ void Lyrics::clearLines() {
     }
 
     // Doesn't actually clear lines, set a flag instead so anims can run
+    m_result.found = false;
     m_hasLyrics = false;
     emit hasLyricsChanged();
     if (m_hasRomanized) {
@@ -612,9 +882,24 @@ void Lyrics::trackReply(int reqId, QNetworkReply* reply) {
 }
 
 void Lyrics::doLoad() {
+    const bool forceRefresh = m_forceRefresh;
+    m_forceRefresh = false;
+    const bool ignoreSavedSelection = m_ignoreSavedSelection;
+    m_ignoreSavedSelection = false;
+
     if (m_artist.isEmpty() && m_title.isEmpty()) {
         clearLines();
         clearCandidates();
+        m_result = {};
+        m_linesOriginal.clear();
+        m_linesRomanized.clear();
+        m_lines.clear();
+        m_lyricsOriginal.clear();
+        m_lyricsRomanized.clear();
+        m_lyrics.clear();
+        m_fallbackLines.clear();
+        updateActiveLyrics();
+        emit sourceChanged();
         setLoading(false);
         return;
     }
@@ -626,6 +911,13 @@ void Lyrics::doLoad() {
     setLoading(true);
     clearLines();
     clearCandidates();
+
+    // A selection belongs to the previous track until the saved pin below
+    // restores one for this track.
+    if (m_selected.isValid()) {
+        m_selected = LyricCandidate();
+        emit selectedCandidateChanged();
+    }
 
     // Fresh load: forget any original held back while hunting for a romanized variant
     m_linesSetThisLoad = false;
@@ -643,19 +935,28 @@ void Lyrics::doLoad() {
     }
     m_settingFromPrefs = false;
 
-    // Always populate online candidates for the picker, regardless of preferred backend
-    searchLrclibCandidates(reqId);
-    searchNetEaseCandidates(reqId);
-    searchQQMusicCandidates(reqId);
+    // Always populate online candidates for the picker, unless the user turned
+    // every provider off (local-only mode).
+    const QStringList providerIds = enabledProviderIds();
+    if (providerIds.contains(u"lrclib"_s))
+        searchLrclibCandidates(reqId);
+    if (providerIds.contains(u"netease"_s))
+        searchNetEaseCandidates(reqId);
+    if (providerIds.contains(u"qqmusic"_s))
+        searchQQMusicCandidates(reqId);
 
-    if (restored.isValid()) {
+    if (restored.isValid() && !ignoreSavedSelection) {
         // A saved Local/LRCLIB selection can never satisfy an active romanized request;
         // skip it and run the normal chain instead. The pin stays saved for when
         // romanized is off, and manual picker picks still win via setSelectedCandidate.
         const bool pinBlockedByRomanized =
             m_romanized
             && (restored.backend() == LyricsBackend::LRCLIB || restored.backend() == LyricsBackend::Local);
-        if (!pinBlockedByRomanized) {
+        // Do not fetch from a provider the user has disabled. Local is always
+        // available, and legacy pins for the old online backends map to provider ids.
+        const bool pinProviderDisabled = restored.backend() != LyricsBackend::Local
+            && !providerIds.contains(backendKey(restored.backend()).toLower());
+        if (!pinBlockedByRomanized && !pinProviderDisabled) {
             // Honor saved selection for this track. Restore with this load's request id
             // and without cancelling, so the candidate searches above keep running.
             m_selected = restored;
@@ -665,25 +966,35 @@ void Lyrics::doLoad() {
         }
     }
 
-    // Primary attempt by preferred backend
-    switch (m_preferredBackend) {
-    case LyricsBackend::Local:
-        tryLocal(reqId);
-        break;
-    case LyricsBackend::LRCLIB:
-        tryLrclib(reqId);
-        break;
-    case LyricsBackend::NetEase:
-        tryNetEase(reqId);
-        break;
-    case LyricsBackend::QQMusic:
-        tryQQMusic(reqId);
-        break;
-    case LyricsBackend::Auto:
-    default:
-        tryLocal(reqId);
-        break;
-    }
+    LyricsQuery query;
+    query.artist = m_artist;
+    query.title = m_title;
+    query.album = m_album;
+    query.fileUrl = m_fileUrl;
+    query.duration = m_duration;
+    query.refresh = forceRefresh;
+    query.lyricsDir = lyricsDir();
+
+    m_engine->lookup(query, providerIds, [this, reqId](const LyricsResult& result) {
+        if (reqId != m_currentRequestId)
+            return;
+        if (result.found) {
+            setResult(result);
+        } else {
+            clearLines();
+            m_result = {};
+            m_linesOriginal.clear();
+            m_linesRomanized.clear();
+            m_lines.clear();
+            m_lyricsOriginal.clear();
+            m_lyricsRomanized.clear();
+            m_lyrics.clear();
+            m_fallbackLines.clear();
+            updateActiveLyrics();
+            emit sourceChanged();
+        }
+        setLoading(false);
+    });
 }
 
 void Lyrics::chainNext(LyricsBackend justFailed, int reqId) {
@@ -725,6 +1036,17 @@ void Lyrics::finishWithFallback(int reqId) {
         qCDebug(lcLyrics) << "romanized: no variant found, showing original lyrics from" << m_fallbackBackend;
         setLines(m_fallbackLines, m_fallbackBackend);
         m_fallbackLines.clear();
+        setLoading(false);
+        return;
+    }
+    // A restored or manually picked candidate that no longer resolves would
+    // otherwise leave the track permanently blank. Retry once through the
+    // provider engine, keeping the saved pin for the next track load.
+    if (!m_linesSetThisLoad && m_fallbackLines.isEmpty() && m_selected.isValid()) {
+        qCDebug(lcLyrics) << "selected candidate failed, falling back to provider lookup";
+        m_ignoreSavedSelection = true;
+        scheduleLoad();
+        return;
     }
     setLoading(false);
 }
@@ -1027,17 +1349,21 @@ void Lyrics::fetchLrclibById(const QString& id, int reqId) {
         }
         if (reply->error() != QNetworkReply::NoError) {
             qCWarning(lcLyrics) << "lrclib /get/{id} error:" << reply->errorString();
-            setLoading(false);
+            finishWithFallback(reqId);
             return;
         }
         const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
         const QString synced = doc.object().value(u"syncedLyrics"_s).toString();
         if (synced.isEmpty()) {
             qCDebug(lcLyrics) << "lrclib /get/{id}: no syncedLyrics";
-            setLoading(false);
+            finishWithFallback(reqId);
             return;
         }
         const auto lines = parseLrc(synced);
+        if (lines.isEmpty()) {
+            finishWithFallback(reqId);
+            return;
+        }
         // Manual candidate selection wins: show non-latin lyrics as-is (romanized variant,
         // if any, is derived in setLines)
         writeCachedLrc(LyricsBackend::LRCLIB, id, synced);

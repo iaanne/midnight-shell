@@ -23,6 +23,7 @@ public:
     Q_INVOKABLE void remove(qsizetype index);
     Q_INVOKABLE void move(qsizetype from, qsizetype to);
     Q_INVOKABLE void clear();
+    Q_INVOKABLE void append(const QVariantMap& props);
 
     [[nodiscard]] QString pathFor(const QString& key) const override;
     [[nodiscard]] const Schema& schema() const override;

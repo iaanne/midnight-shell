@@ -2,6 +2,8 @@
 
 #include <qhash.h>
 
+#include <utility>
+
 #include "pinyin_data.hpp"
 
 namespace caelestia::services {
@@ -530,10 +532,34 @@ QVector<LyricLine> romanizeLines(const QVector<LyricLine>& lines) {
     out.reserve(lines.size());
     bool any = false;
     for (const auto& l : lines) {
+        if (!l.words.isEmpty()) {
+            QVector<LyricWord> words;
+            words.reserve(l.words.size());
+            bool convertedWord = false;
+            for (const auto& word : l.words) {
+                const QString r = romanizeText(word.text);
+                // Latin words, punctuation and spacing have nothing to convert;
+                // preserving them keeps the word timing for the rest of the line.
+                words.append(LyricWord{
+                    .time = word.time, .end = word.end, .text = r.isEmpty() ? word.text : r });
+                convertedWord = convertedWord || !r.isEmpty();
+            }
+            if (convertedWord) {
+                LyricLine converted = l;
+                converted.words = std::move(words);
+                converted.text = joinLyricWords(converted.words).trimmed();
+                out.append(converted);
+                any = true;
+                continue;
+            }
+        }
         const QString r = romanizeText(l.text);
         if (!r.isEmpty()) {
             any = true;
-            out.append(LyricLine{ .time = l.time, .text = r });
+            LyricLine converted = l;
+            converted.text = r;
+            converted.words.clear();
+            out.append(converted);
         } else {
             out.append(l);
         }

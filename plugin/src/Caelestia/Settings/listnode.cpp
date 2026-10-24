@@ -158,6 +158,10 @@ void ListNode::move(qsizetype from, qsizetype to) {
     emit elementsChanged({}, {}, { { from, to } });
 }
 
+void ListNode::append(const QVariantMap& props) {
+    static_cast<void>(insertElement(props));
+}
+
 void ListNode::clear() {
     if (rejectGlobalMutation())
         return;

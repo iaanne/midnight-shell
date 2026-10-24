@@ -82,12 +82,14 @@ QVector<LyricLine> qqParseQrc(const QString& xml) {
         return result;
     }
 
-    static const QRegularExpression k_content(u"LyricContent=\"([\\s\\S]*?)\"\\s*/>"_s);
+    static const QRegularExpression k_content(u"LyricContent=\"([\\s\\S]*?)\"[^>]*/>"_s);
     const auto contentMatch = k_content.match(xml);
     if (!contentMatch.hasMatch()) {
         return result;
     }
     QString content = contentMatch.captured(1);
+    content.replace(u"&#10;"_s, u"\n"_s);
+    content.replace(u"&#13;"_s, u"\r"_s);
     unescapeXml(content);
 
     static const QRegularExpression k_line(u"^\\[(\\d+),(\\d+)\\](.*)$"_s);

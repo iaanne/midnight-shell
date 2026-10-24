@@ -18,14 +18,15 @@ Item {
     property bool active: true
 
     readonly property real fadeAmount: 0.1
-    property list<string> lyricList: Lyrics.lyrics
+    property var lyricList: LyricsService.lines
 
     function reloadTrack() {
         const p = Players.active;
         if (p) {
-            Lyrics.setTrack(p.trackArtist, p.trackTitle, p.trackAlbum, p.length);
+            LyricsService.setTrack(p.trackArtist ?? "", p.trackTitle ?? "", p.trackAlbum ?? "", p.length ?? 0,
+                p.metadata ? (p.metadata["xesam:url"] ?? "") : "");
         } else {
-            Lyrics.clearTrack();
+            LyricsService.clearTrack();
         }
     }
 
@@ -263,14 +264,22 @@ Item {
         displayMarginEnd: anchors.bottomMargin
 
         model: root.lyricList
-        Component.onCompleted: {
-            currentIndex = Qt.binding(() => {
-                model; // Force update when lyrics change
-                return Lyrics.indexForTime(Players.active?.position ?? 0);
-            });
-            positionViewAtIndex(currentIndex, ListView.Center);
+        Component.onCompleted: syncCurrent()
+        onModelChanged: Qt.callLater(syncCurrent)
+
+        function syncCurrent(): void {
+            currentIndex = LyricsController.currentIndex;
+            if (currentIndex >= 0)
+                positionViewAtIndex(currentIndex, ListView.Center);
         }
-        onModelChanged: Qt.callLater(() => positionViewAtIndex(currentIndex, ListView.Center))
+
+        Connections {
+            target: LyricsController
+
+            function onCurrentIndexChanged(): void {
+                lyrics.syncCurrent();
+            }
+        }
 
         highlightRangeMode: ListView.ApplyRange
         highlightMoveDuration: Tokens.anim.durations.large
@@ -282,40 +291,40 @@ Item {
         opacity: 0
         enabled: opacity > 0
 
-        delegate: StyledText {
+        delegate: Item {
             id: lyric
 
-            required property string modelData
+            required property var modelData
             required property int index
-            property real effectScale: ListView.isCurrentItem ? 1 : 0
+            // ListView attached properties only reflect the delegate root, so a
+            // child cannot read isCurrentItem; derive it from the shared clock.
+            readonly property bool isCurrent: index === LyricsController.currentIndex
+            property real effectScale: lyric.isCurrent ? 1 : 0
 
             anchors.left: lyrics.contentItem.left
             anchors.right: lyrics.contentItem.right
+            implicitHeight: vocal.implicitHeight
 
-            text: modelData || ". . ."
-            color: ListView.isCurrentItem ? Colours.palette.m3primary : mouse.containsMouse ? Colours.palette.m3onSurface : Colours.palette.m3outline
-            font: Tokens.font.body.medium
-            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            LyricsVocal {
+                id: vocal
 
-            layer.enabled: effectScale > 0
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                shadowColor: Colours.palette.m3primary
-                shadowOpacity: 0.5 * lyric.effectScale
-                shadowBlur: 0.6 * lyric.effectScale
-                blur: 0.4 * lyric.effectScale
-            }
+                width: parent.width
+                line: lyric.modelData
+                active: lyric.isCurrent
+                position: LyricsController.position
+                offset: Lyrics.offset / 1000
+                baseColor: lyric.isCurrent || mouse.containsMouse ? Colours.palette.m3onSurface : Colours.palette.m3outline
+                activeColor: Colours.palette.m3primary
+                font: Tokens.font.body.medium
+                horizontalAlignment: Text.AlignLeft
 
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (Players.active) {
-                        let time = Lyrics.timeForIndex(index);
-                        if (time >= 0) {
-                            Players.active.position = time + Lyrics.offset + 0.01;
-                        }
-                    }
+                layer.enabled: lyric.effectScale > 0
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: Colours.palette.m3primary
+                    shadowOpacity: 0.5 * lyric.effectScale
+                    shadowBlur: 0.6 * lyric.effectScale
+                    blur: 0.4 * lyric.effectScale
                 }
             }
 
@@ -332,9 +341,7 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 hoverEnabled: true
                 onClicked: {
-                    const p = Players.active;
-                    if (p)
-                        p.position = Lyrics.timeForIndex(lyric.index);
+                    LyricsController.seek(lyric.modelData);
                 }
             }
         }
@@ -344,5 +351,9 @@ Item {
                 type: Anim.SlowEffects
             }
         }
+    }
+
+    LyricsSubscription {
+        active: root.active
     }
 }

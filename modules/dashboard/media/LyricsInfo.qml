@@ -6,6 +6,7 @@ import Caelestia.Config
 import Caelestia.I18n
 import Caelestia.Services
 import qs.components
+import qs.components.containers
 import qs.services
 import "../../../components/controls"
 
@@ -14,6 +15,29 @@ Item {
 
     property bool open
     readonly property real padding: Tokens.padding.large
+
+    // Candidate picker: the selected-candidate row expands this list.
+    property bool candidatesExpanded: false
+
+    onOpenChanged: {
+        if (!open)
+            candidatesExpanded = false;
+    }
+
+    function backendLabel(candidate: var): string {
+        switch (candidate.backend) {
+        case LyricsBackend.LRCLIB:
+            return "LRCLIB";
+        case LyricsBackend.NetEase:
+            return "NetEase";
+        case LyricsBackend.QQMusic:
+            return "QQ Music";
+        case LyricsBackend.Local:
+            return Tr.tr("Local");
+        default:
+            return "";
+        }
+    }
 
     implicitWidth: btn.implicitWidth * 0.9
     implicitHeight: btn.implicitHeight * 0.9
@@ -151,9 +175,19 @@ Item {
                 opacity: 0
 
                 StyledText {
-                    // TRANSLATORS: %1 = lyrics backend name, e.g. LRCLIB
-                    text: Tr.tr("Backend: %1").arg(CUtils.enumToString(Lyrics, "backend"))
+                    // TRANSLATORS: %1 = lyrics provider name, e.g. LRCLIB
+                    text: Lyrics.instrumental ? Tr.tr("Instrumental") : Tr.tr("Source: %1").arg(Lyrics.sourceName || Tr.tr("Local"))
                     color: Colours.palette.m3onSurfaceVariant
+                    animate: true
+                }
+
+                StyledText {
+                    visible: Lyrics.sourceText !== ""
+                    Layout.maximumWidth: Tokens.sizes.dashboard.mediaTabWidth
+                    text: Lyrics.sourceText
+                    color: Colours.palette.m3onSurfaceVariant
+                    font: Tokens.font.body.small
+                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                     animate: true
                 }
 
@@ -162,6 +196,7 @@ Item {
                     spacing: Tokens.spacing.extraSmall
 
                     StyledText {
+                        visible: Lyrics.selectedCandidate.id !== ""
                         Layout.fillWidth: true
                         Layout.maximumWidth: Tokens.sizes.dashboard.mediaTabWidth / 2
                         text: qsTr("Selected candidate: %1 | %2 | %3").arg(Lyrics.selectedCandidate.title).arg(Lyrics.selectedCandidate.artist).arg(Lyrics.selectedCandidate.album)
@@ -171,9 +206,96 @@ Item {
                     }
 
                     IconButton {
+                        visible: Lyrics.lyricCandidates.length > 0
+                        icon: root.candidatesExpanded ? "expand_less" : "expand_more"
+                        type: IconButton.Text
+                        onClicked: root.candidatesExpanded = !root.candidatesExpanded
+                    }
+
+                    IconButton {
                         icon: "refresh"
                         type: IconButton.Text
                         onClicked: Lyrics.refresh()
+                    }
+                }
+
+                StyledFlickable {
+                    id: candidateScroller
+
+                    Layout.fillWidth: true
+                    // Collapsed height is zero; otherwise show up to 200px and scroll.
+                    // The Repeater is not virtualized, so the content height is known
+                    // even while the scroller is hidden.
+                    Layout.preferredHeight: root.candidatesExpanded ? Math.min(candidateColumn.implicitHeight, 200) : 0
+                    implicitWidth: Tokens.sizes.dashboard.mediaTabWidth / 2
+                    visible: root.candidatesExpanded && candidateColumn.implicitHeight > 0
+                    contentWidth: width
+                    contentHeight: candidateColumn.implicitHeight
+                    flickableDirection: Flickable.VerticalFlick
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    StyledScrollBar.vertical: StyledScrollBar {
+                        flickable: candidateScroller
+                    }
+
+                    ColumnLayout {
+                        id: candidateColumn
+
+                        width: candidateScroller.width
+                        spacing: Tokens.spacing.extraSmall
+
+                        Repeater {
+                            model: Lyrics.lyricCandidates
+
+                            delegate: StyledRect {
+                                id: candidateItem
+
+                                required property var modelData
+
+                                readonly property bool current: Lyrics.selectedCandidate.id === modelData.id
+                                    && Lyrics.selectedCandidate.backend === modelData.backend
+                                readonly property string label: modelData.title
+                                    + (modelData.artist !== "" ? " — " + modelData.artist : "")
+                                    + (modelData.album !== "" ? " (" + modelData.album + ")" : "")
+
+                                Layout.fillWidth: true
+                                implicitHeight: candidateRow.implicitHeight + Tokens.padding.small * 2
+                                radius: Tokens.rounding.small
+                                color: current ? Colours.palette.m3primaryContainer : Qt.alpha(Colours.palette.m3surfaceContainerHighest, 0.6)
+
+                                StateLayer {
+                                    radius: candidateItem.radius
+                                    onClicked: {
+                                        Lyrics.selectedCandidate = candidateItem.modelData;
+                                        root.candidatesExpanded = false;
+                                    }
+                                }
+
+                                RowLayout {
+                                    id: candidateRow
+
+                                    anchors.fill: parent
+                                    anchors.margins: Tokens.padding.small
+                                    spacing: Tokens.spacing.small
+
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: candidateItem.label
+                                        color: candidateItem.current ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
+                                        elide: Text.ElideRight
+                                        animate: true
+                                    }
+
+                                    StyledText {
+                                        Layout.alignment: Qt.AlignVCenter
+                                        text: root.backendLabel(candidateItem.modelData)
+                                        color: candidateItem.current ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurfaceVariant
+                                        font: Tokens.font.body.small
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 

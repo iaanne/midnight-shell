@@ -4,31 +4,13 @@ import Quickshell
 import Caelestia.Config
 import Caelestia.I18n
 import Caelestia.Services
+import qs.components
 import qs.components.controls
 import qs.services
 import qs.modules.nexus.common
 
 PageBase {
     id: root
-
-    // Lyrics backends, ordered to match config::LyricsBackend (Auto, Local, LRCLIB, NetEase, QQMusic)
-    readonly property list<MenuItem> lyricsItems: [
-        MenuItem {
-            text: Tr.trCtx("Auto", "lyrics backend")
-        },
-        MenuItem {
-            text: Tr.trCtx("Local", "lyrics backend")
-        },
-        MenuItem {
-            text: "LRCLIB"
-        },
-        MenuItem {
-            text: "NetEase"
-        },
-        MenuItem {
-            text: "QQMusic"
-        }
-    ]
 
     // GPU types, ordered to match config::GpuType (Auto, Nvidia, Generic, None)
     readonly property list<MenuItem> gpuItems: [
@@ -47,6 +29,8 @@ PageBase {
     ]
 
     title: Tr.tr("Services")
+
+    Component.onCompleted: Lyrics.syncProviders()
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -135,13 +119,40 @@ PageBase {
             text: Tr.tr("Media & lyrics")
         }
 
-        SelectRow {
+        StyledText {
+            Layout.fillWidth: true
+            Layout.leftMargin: Tokens.padding.largeIncreased
+            Layout.rightMargin: Tokens.padding.largeIncreased
+            text: Tr.tr("Drag to reorder. Word-synced results win over line-synced ones. Turn every provider off to use local lyrics only.")
+            color: Colours.palette.m3onSurfaceVariant
+            font: Tokens.font.body.small
+            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+        }
+
+        ListEditor {
+            id: providerEditor
+
+            removable: false
             first: true
-            label: Tr.tr("Lyrics backend")
-            subtext: Tr.tr("Source used to fetch synced lyrics")
-            menuItems: root.lyricsItems
-            active: root.lyricsItems[Lyrics.preferredBackend] ?? root.lyricsItems[0]
-            onSelected: item => Lyrics.preferredBackend = root.lyricsItems.indexOf(item)
+            values: GlobalConfig.services.lyricsProviders.values
+
+            function labelFor(item: var): string {
+                const provider = Lyrics.providers.find(p => p.id === item.id);
+                return provider?.name ?? item.id;
+            }
+
+            function toggledFor(item: var): bool {
+                return item.enabled;
+            }
+
+            onItemMoved: (from, to) => {
+                GlobalConfig.services.lyricsProviders.move(from, to);
+            }
+            onItemToggled: (index, checked) => {
+                const entry = GlobalConfig.services.lyricsProviders.at(index);
+                if (entry)
+                    Lyrics.setProviderEnabled(entry.id, checked);
+            }
         }
 
         ToggleRow {

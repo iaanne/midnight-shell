@@ -56,8 +56,13 @@ Item {
     readonly property bool appFilterActive: Players.appFilterPasses(Config.background.desktopLyrics.appFilter, Config.background.desktopLyrics.filteredApps, Players.active)
 
     property bool hasLyrics: Lyrics.hasLyrics
-    property int currentLyricIndex: -1
-    readonly property bool isCurrentActive: currentLyricIndex >= 0
+    // Plain and instrumental results still have text but no timing; show the
+    // first lines without treating any of them as the active karaoke line.
+    property int currentLyricIndex: Lyrics.hasLyrics
+        ? (Lyrics.timedLyrics ? LyricsController.currentIndex : 0)
+        : -1
+    readonly property bool isCurrentActive: currentLyricIndex >= 0 && Lyrics.timedLyrics
+    readonly property var currentLineObj: currentLyricIndex >= 0 ? (Lyrics.lyricLines[currentLyricIndex] ?? null) : null
 
     property var player: Players.active
     readonly property int contextLines: Config.background.desktopLyrics.contextLines
@@ -90,14 +95,11 @@ Item {
     function reloadTrack() {
         const p = Players.active;
         if (p) {
-            Lyrics.setTrack(p.trackArtist, p.trackTitle, p.trackAlbum, p.length);
+            LyricsService.setTrack(p.trackArtist ?? "", p.trackTitle ?? "", p.trackAlbum ?? "", p.length ?? 0,
+                p.metadata ? (p.metadata["xesam:url"] ?? "") : "");
         } else {
-            Lyrics.clearTrack();
+            LyricsService.clearTrack();
         }
-    }
-
-    function forceUpdate() {
-        currentLyricIndex = Lyrics.hasLyrics ? Lyrics.indexForTime(Players.active?.position ?? 0) : -1;
     }
 
     function lineText(d) {
@@ -145,19 +147,6 @@ Item {
         }
     }
 
-    Timer {
-        running: Players.active?.isPlaying ?? false
-        interval: GlobalConfig.dashboard.mediaUpdateInterval
-        triggeredOnStart: true
-        repeat: true
-        onTriggered: {
-            if (!Players.active)
-                return;
-            currentLyricIndex = Lyrics.indexForTime(Players.active.position);
-            Players.active?.positionChanged();
-        }
-    }
-
     Connections {
         function onActiveChanged() {
             root.reloadTrack();
@@ -174,18 +163,6 @@ Item {
         ignoreUnknownSignals: true
 
         target: Players.active
-    }
-
-    Connections {
-        function onHasLyricsChanged() {
-            root.forceUpdate();
-        }
-
-        function onLyricsChanged() {
-            root.forceUpdate();
-        }
-
-        target: Lyrics
     }
 
     Item {
@@ -347,10 +324,15 @@ Item {
                         readonly property string line: root.lineText(distance)
                         readonly property real bigPointSize: Tokens.font.title.medium.pointSize * 1.3 * root.lyricsScale
                         readonly property real smallPointSize: Tokens.font.body.medium.pointSize * root.lyricsScale
+                        // Word/syllable karaoke only applies to the centre line; the
+                        // surrounding context lines stay plain.
+                        readonly property bool karaoke: slot.isCenter && root.isCurrentActive && Lyrics.wordSynced && ((root.currentLineObj?.w?.length ?? 0) > 0)
 
                         width: lyricsContainer.width
-                        height: label.implicitHeight
-                        visible: root.isCurrentActive && line !== ""
+                        height: slot.karaoke ? (karaoke.item?.implicitHeight ?? 0) : label.implicitHeight
+                        // Untimed results have no active line, but they should still
+                        // show the first context lines instead of an empty overlay.
+                        visible: (root.isCurrentActive || (Lyrics.hasLyrics && !Lyrics.timedLyrics)) && line !== ""
 
                         transform: Translate {
                             id: slideOffset
@@ -385,10 +367,32 @@ Item {
                             }
                         }
 
+                        Loader {
+                            id: karaoke
+
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            active: slot.karaoke
+                            visible: active
+
+                            sourceComponent: LyricsVocal {
+                                width: slot.width
+                                line: root.currentLineObj
+                                active: true
+                                position: LyricsController.position
+                                offset: Lyrics.offset / 1000
+                                baseColor: root.safeSecondary
+                                activeColor: Colours.palette.m3primary
+                                horizontalAlignment: root.textAlignment
+                                font.family: root.sansFont
+                                font.pointSize: slot.bigPointSize
+                                font.weight: Font.Bold
+                            }
+                        }
+
                         MultiEffect {
-                            anchors.fill: label
-                            source: label
-                            scale: label.scale
+                            anchors.fill: slot.karaoke ? karaoke : label
+                            source: slot.karaoke ? karaoke.item : label
                             enabled: slot.isCenter && root.isCurrentActive
 
                             blurEnabled: true
@@ -408,6 +412,7 @@ Item {
                             id: label
 
                             anchors.fill: parent
+                            visible: !slot.karaoke
                             text: slot.line
                             font.family: root.sansFont
                             font.pointSize: slot.isCenter ? slot.bigPointSize : slot.smallPointSize
@@ -421,5 +426,9 @@ Item {
                 }
             }
         }
+    }
+
+    LyricsSubscription {
+        active: root.visible
     }
 }

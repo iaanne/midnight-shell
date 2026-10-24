@@ -20,7 +20,7 @@ namespace caelestia::config {
 
 ENUM(BarWorkspaceDisplay, Shapes, Text, Icons)
 ENUM(BarWorkspaceCapitalisation, Preserve, Upper, Lower)
-ENUM(LyricsBackend, Auto, Local, LRCLIB, NetEase, QQMusic)
+ENUM(LyricsBackend, Auto, Local, LRCLIB, NetEase, QQMusic, BetterLyrics, Unison, LyricsPlus, KuGou, YouTubeMusic)
 ENUM(GpuType, Auto, Nvidia, Generic, None)
 ENUM(GpuMode, Always, Charging, Never)
 ENUM(NotifsFullscreen, On, Off)
