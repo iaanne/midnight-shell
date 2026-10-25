@@ -107,8 +107,47 @@ PageBase {
         ButtonRow {
             Layout.bottomMargin: Tokens.spacing.large - parent.spacing
             Layout.alignment: Qt.AlignHCenter
-            Layout.minimumWidth: Math.round(root.cappedWidth * (root.isActive ? 0.7 : 0.5))
+            Layout.minimumWidth: Math.round(root.cappedWidth * (root.isActive ? 0.85 : 0.7))
             spacing: Tokens.spacing.small
+
+            ButtonBase {
+                id: configureBtn
+
+                fillWidth: true
+                shapeMorph: true
+                isRound: true
+                inactiveColour: Colours.palette.m3secondaryContainer
+                inactiveOnColour: Colours.palette.m3onSecondaryContainer
+
+                implicitWidth: configureLayout.implicitWidth + Tokens.padding.extraLarge * 2
+                implicitHeight: configureLayout.implicitHeight + Tokens.padding.medium * 2
+
+                onClicked: {
+                    root.nState.networkConfigSsid = root.ssid;
+                    root.nState.networkConfigEditing = true;
+                    root.nState.openSubPage(2); // Shared add/edit configuration sub-page
+                }
+
+                ColumnLayout {
+                    id: configureLayout
+
+                    anchors.centerIn: parent
+                    spacing: 0
+
+                    MaterialIcon {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "tune"
+                        color: configureBtn.onColour
+                        fontStyle: Tokens.font.icon.medium
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: Tr.tr("Configure")
+                        color: configureBtn.onColour
+                    }
+                }
+            }
 
             ButtonBase {
                 id: forgetBtn

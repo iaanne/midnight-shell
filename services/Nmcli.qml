@@ -68,6 +68,29 @@ Singleton {
     readonly property string connectionParamBssid: "802-11-wireless.bssid"
     readonly property string connectionParamHidden: "802-11-wireless.hidden"
 
+    // Additional security / 802.1X fields, used when a connection needs more
+    // than a plain WPA-PSK password (SAE, WEP, WPA-Enterprise, ...).
+    readonly property string keyMgmtSae: "sae"
+    readonly property string keyMgmtWpaEap: "wpa-eap"
+    readonly property string keyMgmtNone: "none"
+    readonly property string securityWepKey0: "802-11-wireless-security.wep-key0"
+    readonly property string securityWepKeyType: "802-11-wireless-security.wep-key-type"
+    readonly property string security8021xEap: "802-1x.eap"
+    readonly property string security8021xPhase2: "802-1x.phase2-auth"
+    readonly property string security8021xIdentity: "802-1x.identity"
+    readonly property string security8021xPassword: "802-1x.password"
+    readonly property string security8021xPasswordFlags: "802-1x.password-flags"
+    readonly property string security8021xAnonIdentity: "802-1x.anonymous-identity"
+    readonly property string security8021xCaCert: "802-1x.ca-cert"
+
+    // Protection buckets shared with the configuration UI. Plain strings so
+    // they survive the trip through QML without a registered enum.
+    readonly property string securityKindOpen: "open"
+    readonly property string securityKindWep: "wep"
+    readonly property string securityKindPsk: "psk"
+    readonly property string securityKindSae: "sae"
+    readonly property string securityKindEnterprise: "enterprise"
+
     signal connectionFailed(string ssid)
 
     function detectPasswordRequired(error: string): bool {
@@ -425,8 +448,36 @@ Singleton {
         }
     }
 
-    function connectToNetwork(ssid: string, password: string, bssid: string, callback: var): void {
-        connectWireless(ssid, password, bssid, callback);
+    function connectToNetwork(ssid: string, password: string, bssid: string, callback: var, config: var): void {
+        if (config) {
+            root.connectWithConfig(ssid, config, bssid, callback);
+        } else {
+            connectWireless(ssid, password, bssid, callback);
+        }
+    }
+
+    // Connects to an SSID using a full security configuration, for protections
+    // that need more than a plain password (enterprise, WEP, ...). Mirrors
+    // connectWireless()'s pending-connection bookkeeping.
+    function connectWithConfig(ssid: string, config: var, bssid: string, callback: var): void {
+        const hasBssid = bssid !== undefined && bssid !== null && bssid.toString().length > 0;
+
+        if (callback) {
+            root.pendingConnection = {
+                ssid: ssid,
+                bssid: hasBssid ? bssid : "",
+                callback: callback,
+                retryCount: 0
+            };
+            connectionCheckTimer.start();
+            immediateCheckTimer.checkCount = 0;
+            immediateCheckTimer.start();
+        }
+
+        const merged = Object.assign({}, config || {});
+        if (hasBssid)
+            merged.bssid = bssid;
+        root.addConnection(ssid, merged, false, callback);
     }
 
     function connectWireless(ssid: string, password: string, bssid: string, callback: var, retryCount: int): void {
@@ -624,6 +675,25 @@ Singleton {
         root.savedConnectionSecurity = security;
     }
 
+    // Classifies a raw nmcli SECURITY string (e.g. "WPA2 802.1X", "WEP",
+    // "WPA3") into one of the securityKind* buckets used by the UI.
+    function securityKind(security: string): string {
+        const s = (security || "").trim().toLowerCase();
+        if (s.length === 0 || s === "none" || s === "--")
+            return root.securityKindOpen;
+        if (s.includes("802.1x") || s.includes("eap"))
+            return root.securityKindEnterprise;
+        if (s.includes("wep"))
+            return root.securityKindWep;
+        if (s.includes("sae") || s.includes("wpa3"))
+            return root.securityKindSae;
+        return root.securityKindPsk;
+    }
+
+    function isEnterpriseSecurity(security: string): bool {
+        return root.securityKind(security) === root.securityKindEnterprise;
+    }
+
     function securityLabel(keyMgmt: string): string {
         switch ((keyMgmt || "").trim().toLowerCase()) {
         case "":
@@ -678,8 +748,21 @@ Singleton {
 
     // Adds and connects to an SSID by name. When hidden is true the profile is
     // created with 802-11-wireless.hidden=yes so NetworkManager actively probes
-    // for it.
+    // for it. Thin wrapper over addConnection() for the common personal/open case.
     function addHiddenNetwork(ssid: string, password: string, security: string, hidden: bool, callback: var): void {
+        const isSecure = security && security !== "none";
+        root.addConnection(ssid, {
+            security: isSecure ? root.securityKindPsk : root.securityKindOpen,
+            password: password
+        }, hidden, callback);
+    }
+
+    // Adds and activates a Wi-Fi connection profile for any supported
+    // protection type. `config` is an object:
+    //   { security: securityKind*, password, identity, eap, phase2,
+    //     anonIdentity, caCert, bssid }
+    // Only the fields relevant to the chosen protection are used.
+    function addConnection(ssid: string, config: var, hidden: bool, callback: var): void {
         if (!ssid || ssid.length === 0) {
             if (callback)
                 callback({
@@ -691,14 +774,40 @@ Singleton {
             return;
         }
 
-        const isSecure = security && security !== "none";
+        const cfg = config || {};
+        const kind = cfg.security || root.securityKindPsk;
 
         // Remove any stale profile with the same name first so we don't collide.
         checkAndDeleteConnection(ssid, () => {
             let cmd = [root.nmcliCommandConnection, "add", root.connectionParamType, root.deviceTypeWifi, root.connectionParamConName, ssid, root.connectionParamIfname, "*", root.connectionParamSsid, ssid, root.connectionParamHidden, hidden ? "yes" : "no"];
 
-            if (isSecure) {
-                cmd.push(root.securityKeyMgmt, root.keyMgmtWpaPsk, root.securityPsk, password);
+            const bssid = (cfg.bssid ?? "").toString().trim();
+            if (bssid.length > 0)
+                cmd.push(root.connectionParamBssid, bssid.toUpperCase());
+
+            if (kind === root.securityKindPsk) {
+                cmd.push(root.securityKeyMgmt, root.keyMgmtWpaPsk, root.securityPsk, cfg.password || "");
+            } else if (kind === root.securityKindSae) {
+                cmd.push(root.securityKeyMgmt, root.keyMgmtSae, root.securityPsk, cfg.password || "");
+            } else if (kind === root.securityKindWep) {
+                cmd.push(root.securityKeyMgmt, root.keyMgmtNone, root.securityWepKeyType, "1", root.securityWepKey0, cfg.password || "");
+            } else if (kind === root.securityKindEnterprise) {
+                cmd.push(root.securityKeyMgmt, root.keyMgmtWpaEap);
+                cmd.push(root.security8021xEap, cfg.eap || "peap");
+                const phase2 = (cfg.phase2 ?? "").trim();
+                if (phase2.length > 0)
+                    cmd.push(root.security8021xPhase2, phase2);
+                const identity = (cfg.identity ?? "").trim();
+                if (identity.length > 0)
+                    cmd.push(root.security8021xIdentity, identity);
+                cmd.push(root.security8021xPassword, cfg.password || "");
+                cmd.push(root.security8021xPasswordFlags, "0");
+                const anonIdentity = (cfg.anonIdentity ?? "").trim();
+                if (anonIdentity.length > 0)
+                    cmd.push(root.security8021xAnonIdentity, anonIdentity);
+                const caCert = (cfg.caCert ?? "").trim();
+                if (caCert.length > 0)
+                    cmd.push(root.security8021xCaCert, caCert);
             }
 
             executeCommand(cmd, result => {
@@ -715,6 +824,156 @@ Singleton {
                         callback(result);
                     }
                 }
+            });
+        });
+    }
+
+    // Maps a saved profile's 802-11-wireless-security.key-mgmt value onto the
+    // securityKind* buckets used by the UI. WEP profiles report key-mgmt "none"
+    // (or empty) and are distinguished by the presence of a WEP key.
+    function securityKindFromKeyMgmt(keyMgmt: string, isWep: bool): string {
+        const k = (keyMgmt || "").trim().toLowerCase();
+        if (k === "wpa-psk" || k === "wpa-psk-sha256")
+            return root.securityKindPsk;
+        if (k === "sae")
+            return root.securityKindSae;
+        if (k === "wpa-eap" || k === "wpa-eap-suite-b-192" || k === "ieee8021x")
+            return root.securityKindEnterprise;
+        return isWep ? root.securityKindWep : root.securityKindOpen;
+    }
+
+    // nmcli's terse (-t) output escapes ':' and '\' with a backslash.
+    function unescapeTerse(value: string): string {
+        return (value || "").replace(/\\:/g, ":").replace(/\\\\/g, "\\");
+    }
+
+    // Reads the stored Wi-Fi security configuration of an existing profile so
+    // the configuration UI can be pre-filled when editing. Secrets are requested
+    // with --show-secrets; if the daemon denies access the secret fields come
+    // back empty and the UI falls back to "leave blank to keep the stored value".
+    function getSavedSecurityConfig(connectionName: string, callback: var): void {
+        if (!connectionName || connectionName.length === 0) {
+            if (callback)
+                callback(null);
+            return;
+        }
+
+        const fields = [root.securityKeyMgmt, root.securityPsk, root.securityWepKey0, root.securityWepKeyType, root.security8021xEap, root.security8021xPhase2, root.security8021xIdentity, root.security8021xPassword, root.security8021xAnonIdentity, root.security8021xCaCert, root.connectionParamHidden].join(",");
+
+        executeCommand(["-s", "-t", "-f", fields, root.nmcliCommandConnection, "show", connectionName], result => {
+            if (!result.success) {
+                if (callback)
+                    callback(null);
+                return;
+            }
+
+            const values = {};
+            for (const line of result.output.split("\n")) {
+                const idx = line.indexOf(":");
+                if (idx < 0)
+                    continue;
+                values[line.substring(0, idx)] = root.unescapeTerse(line.substring(idx + 1));
+            }
+
+            const keyMgmt = (values[root.securityKeyMgmt] || "").trim();
+            const wepKey = (values[root.securityWepKey0] || "").trim();
+            const kind = root.securityKindFromKeyMgmt(keyMgmt, wepKey.length > 0);
+
+            let password = "";
+            if (kind === root.securityKindWep)
+                password = wepKey;
+            else if (kind === root.securityKindEnterprise)
+                password = values[root.security8021xPassword] || "";
+            else if (kind === root.securityKindPsk || kind === root.securityKindSae)
+                password = values[root.securityPsk] || "";
+
+            if (callback)
+                callback({
+                    security: kind,
+                    password: password,
+                    identity: values[root.security8021xIdentity] || "",
+                    eap: (values[root.security8021xEap] || "").trim() || "peap",
+                    phase2: values[root.security8021xPhase2] || "",
+                    anonIdentity: values[root.security8021xAnonIdentity] || "",
+                    caCert: values[root.security8021xCaCert] || "",
+                    hidden: (values[root.connectionParamHidden] || "").trim().toLowerCase() === "yes"
+                });
+        });
+    }
+
+    // Applies new Wi-Fi security settings to an existing profile in place, so
+    // IPv4/DNS/autoconnect and the connection UUID are preserved. Only the
+    // fields belonging to the chosen protection kind are written; an empty
+    // password leaves the currently stored secret untouched.
+    function updateConnection(connectionName: string, config: var, callback: var): void {
+        if (!connectionName || connectionName.length === 0) {
+            if (callback)
+                callback({
+                    success: false,
+                    output: "",
+                    error: "No connection specified",
+                    exitCode: -1
+                });
+            return;
+        }
+
+        const cfg = config || {};
+        const kind = cfg.security || root.securityKindPsk;
+        const password = cfg.password ?? "";
+        let cmd = [root.nmcliCommandConnection, "modify", connectionName];
+
+        // Whether NetworkManager should actively probe for a hidden SSID.
+        if (cfg.hidden !== undefined)
+            cmd.push(root.connectionParamHidden, cfg.hidden ? "yes" : "no");
+
+        if (kind === root.securityKindSae) {
+            cmd.push(root.securityKeyMgmt, root.keyMgmtSae);
+            cmd.push(root.securityWepKey0, "");
+            if (password.length > 0)
+                cmd.push(root.securityPsk, password);
+        } else if (kind === root.securityKindWep) {
+            cmd.push(root.securityKeyMgmt, root.keyMgmtNone);
+            cmd.push(root.securityWepKeyType, "1");
+            cmd.push(root.securityPsk, "");
+            if (password.length > 0)
+                cmd.push(root.securityWepKey0, password);
+        } else if (kind === root.securityKindEnterprise) {
+            cmd.push(root.securityKeyMgmt, root.keyMgmtWpaEap);
+            cmd.push(root.securityWepKey0, "");
+            cmd.push(root.security8021xEap, cfg.eap || "peap");
+            cmd.push(root.security8021xPhase2, cfg.phase2 ?? "");
+            cmd.push(root.security8021xIdentity, cfg.identity ?? "");
+            cmd.push(root.security8021xAnonIdentity, cfg.anonIdentity ?? "");
+            cmd.push(root.security8021xCaCert, cfg.caCert ?? "");
+            if (password.length > 0) {
+                cmd.push(root.security8021xPassword, password);
+                cmd.push(root.security8021xPasswordFlags, "0");
+            }
+        } else if (kind === root.securityKindOpen) {
+            cmd.push(root.securityKeyMgmt, root.keyMgmtNone);
+            cmd.push(root.securityPsk, "");
+            cmd.push(root.securityWepKey0, "");
+        } else {
+            // WPA/WPA2/WPA3 Personal
+            cmd.push(root.securityKeyMgmt, root.keyMgmtWpaPsk);
+            cmd.push(root.securityWepKey0, "");
+            if (password.length > 0)
+                cmd.push(root.securityPsk, password);
+        }
+
+        executeCommand(cmd, result => {
+            if (!result.success) {
+                if (callback)
+                    callback(result);
+                return;
+            }
+            executeCommand([root.nmcliCommandConnection, "up", connectionName], upResult => {
+                Qt.callLater(() => {
+                    refreshOnConnectionChange();
+                });
+                loadSavedConnections(() => {});
+                if (callback)
+                    callback(upResult);
             });
         });
     }

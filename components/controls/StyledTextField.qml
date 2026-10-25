@@ -26,8 +26,11 @@ TextFieldBase {
 
     property string leadingIcon
     property string trailingIcon
+    // Optional clickable trailing icon shown in place of trailingIcon. Emits
+    // trailingIconClicked when pressed; used for e.g. password reveal toggles.
+    property string trailingIconButton
     readonly property int leadingOffset: leadingIcon ? leadingIconLoader.width + leadingIconLoader.anchors.leftMargin : 0
-    readonly property int trailingOffset: trailingIcon ? trailingIconLoader.width + trailingIconLoader.anchors.rightMargin : 0
+    readonly property int trailingOffset: trailingIconButton ? trailingIconButtonLoader.width + trailingIconButtonLoader.anchors.rightMargin : trailingIcon ? trailingIconLoader.width + trailingIconLoader.anchors.rightMargin : 0
 
     property string supportingText
     property string errorText
@@ -39,6 +42,8 @@ TextFieldBase {
     readonly property int supportingTextOffset: effectiveSupportingText ? supportingTextLoader.height + Tokens.spacing.extraSmall : 0
 
     readonly property int filledOffset: type === StyledTextField.Filled ? Tokens.spacing.small : 0
+
+    signal trailingIconClicked
 
     leftPadding: horizontalPadding + leadingOffset
     rightPadding: horizontalPadding + trailingOffset
@@ -170,6 +175,23 @@ TextFieldBase {
                 text: root.trailingIcon
                 color: Colours.palette.m3onSurfaceVariant
                 fontStyle: Tokens.font.icon.builders.medium.scale(0.9).build()
+            }
+        }
+
+        Loader {
+            id: trailingIconButtonLoader
+
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.rightMargin: Tokens.padding.small
+            active: root.trailingIconButton
+
+            sourceComponent: IconButton {
+                icon: root.trailingIconButton
+                type: IconButton.Text
+                radius: Tokens.rounding.full
+                radiusMorph: false
+                onClicked: root.trailingIconClicked()
             }
         }
     }

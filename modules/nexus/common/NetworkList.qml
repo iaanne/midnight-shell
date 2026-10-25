@@ -61,15 +61,23 @@ ItemList {
         anchors.fill: undefined
 
         onClicked: {
-            if (!modelData.active) {
-                NetworkConnection.handleConnect(modelData);
-                currentSelected = true;
-                root.networkSelected(modelData);
-            } else {
+            const ap = network.modelData;
+            if (ap.active) {
                 // Active network: open its detail/settings sub-page.
-                root.nState.selectedNetworkSsid = modelData.ssid;
+                root.nState.selectedNetworkSsid = ap.ssid;
                 root.nState.networkDetailsFromSaved = false;
                 root.nState.openSubPage(3);
+            } else if (Nmcli.securityKind(ap.security) === Nmcli.securityKindOpen || Nmcli.hasSavedProfile(ap.ssid)) {
+                // Open networks and already-saved profiles connect straight away.
+                NetworkConnection.handleConnect(ap);
+                currentSelected = true;
+                root.networkSelected(ap);
+            } else {
+                // Secured and not yet configured: open the configuration page
+                // pre-filled for this network so its protection can be chosen.
+                root.nState.networkConfigSsid = ap.ssid;
+                root.nState.networkConfigEditing = false;
+                root.nState.openSubPage(2);
             }
         }
 

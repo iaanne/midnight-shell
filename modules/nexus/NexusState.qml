@@ -21,6 +21,10 @@ QtObject {
     property string selectedNetworkSsid
     property string selectedEthernetInterface
     property bool networkDetailsFromSaved
+    // Target of the add/edit network configuration sub-page. The SSID is
+    // pre-filled and, when editing, the saved profile is loaded into the form.
+    property string networkConfigSsid
+    property bool networkConfigEditing
 
     signal close
     signal subPageOpened(idx: int)
