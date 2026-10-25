@@ -16,6 +16,11 @@ Scope {
     readonly property bool hasPlayer: Players.list.some(p => p.isPlaying)
     readonly property bool isCharging: !UPower.onBattery
     readonly property bool enabled: {
+        // The "Keep awake" idle inhibitor must hold on the lock screen too, where
+        // compositor handling of inhibitors can be unreliable. Short-circuit the
+        // shell's own idle dispatch while it is enabled.
+        if (IdleInhibitor.enabled)
+            return false;
         if (GlobalConfig.general.idle.inhibitWhenAudio && hasPlayer)
             return false;
         if (GlobalConfig.general.idle.inhibitWhenCharging && isCharging)

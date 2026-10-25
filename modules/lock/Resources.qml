@@ -23,6 +23,31 @@ StyledRect {
         return 1 + Math.pow(Math.abs(diff), 0.8) * Math.sign(diff);
     }
 
+    // Session buttons as shown on the lock screen. The built-in "lock" entry is
+    // redundant here (the session is already locked), so it is replaced by an
+    // idle-inhibitor ("Keep awake") toggle. The bar's session menu is unaffected.
+    readonly property var lockButtons: {
+        const toggle = {
+            key: "idleInhibitor",
+            icon: "coffee",
+            command: [],
+            idleInhibitor: true
+        };
+        let replaced = false;
+        const out = [];
+        for (const button of Config.session.buttons) {
+            if (!replaced && button.key === "lock") {
+                out.push(toggle);
+                replaced = true;
+            } else {
+                out.push(button);
+            }
+        }
+        if (!replaced)
+            out.unshift(toggle);
+        return out;
+    }
+
     implicitHeight: layout.implicitHeight + Tokens.padding.large * 2
     radius: Tokens.rounding.extraLarge
     color: Colours.tPalette.m3surfaceContainer
@@ -159,13 +184,14 @@ StyledRect {
             }
 
             Repeater {
-                model: Config.session.buttons
+                model: root.lockButtons
 
                 SessionButton {
                     required property var modelData
 
                     icon: modelData.icon
                     command: modelData.command
+                    idleInhibitor: modelData.idleInhibitor ?? false
                 }
             }
         }
@@ -175,8 +201,14 @@ StyledRect {
         id: button
 
         required property list<string> command
+        property bool idleInhibitor: false
 
         function exec(): void {
+            if (idleInhibitor) {
+                IdleInhibitor.enabled = !IdleInhibitor.enabled;
+                return;
+            }
+
             if (!SessionManager.exec(command)) {
                 if (command.length > 0) {
                     let hasShellOp = command.some(arg => arg.includes(" ") || arg === "&&" || arg === "||" || arg === ";" || arg === "|" || arg === ">" || arg === "<");
@@ -191,6 +223,9 @@ StyledRect {
 
         Layout.fillWidth: true
         Layout.preferredHeight: width
+
+        isToggle: idleInhibitor
+        checked: idleInhibitor && IdleInhibitor.enabled
 
         inactiveColour: activeFocus ? Colours.palette.m3secondaryContainer : Colours.tPalette.m3surfaceContainerHigh
         inactiveOnColour: activeFocus ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
