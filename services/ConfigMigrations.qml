@@ -57,7 +57,39 @@ Singleton {
         }, index);
     }
 
+    // The bundled font's family is `Caelestia Sans` (its PostScript name is
+    // `CaelestiaSans-Regular`). Older configs pinned the PostScript name or the
+    // pre-rename `GoogleSansFlex`, neither of which resolves as a family, so the
+    // shell rendered a substitute. Clear those pins so the corrected default
+    // applies; resetOption() is a no-op when the value was never pinned.
+    function migrateFontFamilies(): void {
+        const legacy = ["GoogleSansFlex", "CaelestiaSans"];
+        const font = GlobalConfig.appearance.font;
+
+        for (const style of [font.headline, font.title, font.body, font.label]) {
+            if (legacy.includes(style.family))
+                style.resetOption("family");
+
+            for (const size of [style.large, style.medium, style.small]) {
+                if (legacy.includes(size.family))
+                    size.resetOption("family");
+            }
+        }
+
+        // Standalone family strings on the same node (an empty value inherits
+        // the body font).
+        if (legacy.includes(font.clock))
+            font.resetOption("clock");
+        if (legacy.includes(font.workspaces))
+            font.resetOption("workspaces");
+        if (legacy.includes(font.barClock))
+            font.resetOption("barClock");
+        if (legacy.includes(font.activeWindow))
+            font.resetOption("activeWindow");
+    }
+
     Component.onCompleted: {
+        root.migrateFontFamilies();
         root.seedDesktopElements();
         root.ensureQuickToggle("speaker", ["mic"]);
         root.ensureQuickToggle("visualizer", ["badapple"]);

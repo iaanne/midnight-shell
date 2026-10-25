@@ -10,6 +10,15 @@ settings::ObjectNode* style(const settings::ObjectNode* cfg, const QString& key)
     return cfg->value(key).value<settings::ObjectNode*>();
 }
 
+// An explicitly empty family means "inherit the default". Node::value() only
+// returns the schema default when the key is absent, so a value pinned as ""
+// has to be mapped back to it here; otherwise the built QFont carries an empty
+// family and Qt substitutes its own default instead of the bundled font.
+QString styleFamily(const settings::ObjectNode* cfg) {
+    const auto family = cfg->value(u"family"_s).toString();
+    return family.isEmpty() ? cfg->descriptorFor(u"family"_s).defaultValue().toString() : family;
+}
+
 } // namespace
 
 // FontStyleBase
@@ -79,7 +88,7 @@ void FontStyleBase::bind(settings::ObjectNode* cfg) {
 
 void FontStyleBase::rebuild() {
     if (m_cfg) {
-        const auto family = m_cfg->value(u"family"_s).toString();
+        const auto family = styleFamily(m_cfg);
         m_large = buildFont(style(m_cfg, u"large"_s), family, m_scale);
         m_medium = buildFont(style(m_cfg, u"medium"_s), family, m_scale);
         m_small = buildFont(style(m_cfg, u"small"_s), family, m_scale);
@@ -141,7 +150,7 @@ IconFontBuilders* IconFontStyle::builders() const {
 
 void IconFontStyle::rebuild() {
     if (m_cfg) {
-        const auto family = m_cfg->value(u"family"_s).toString();
+        const auto family = styleFamily(m_cfg);
         m_extraLarge = buildFont(style(m_cfg, u"extraLarge"_s), family, m_scale);
     } else {
         m_extraLarge = QFont();

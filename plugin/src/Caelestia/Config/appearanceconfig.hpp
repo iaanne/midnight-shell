@@ -157,22 +157,22 @@ struct FontConfig {
     };
 
 // clang-format off
-FONT_STYLE(Headline, u"CaelestiaSans"_s,
+FONT_STYLE(Headline, u"Caelestia Sans"_s,
     FONT({ .size = 32, .weight = QFont::Medium }),
     FONT({ .size = 28, .weight = QFont::Medium }),
     FONT({ .size = 24, .weight = QFont::Medium })
 )
-FONT_STYLE(Title, u"CaelestiaSans"_s,
+FONT_STYLE(Title, u"Caelestia Sans"_s,
     FONT({ .size = 22, .weight = QFont::Medium }),
     FONT({ .size = 16, .weight = QFont::Medium }),
     FONT({ .size = 14, .weight = QFont::Medium })
 )
-FONT_STYLE(Body, u"CaelestiaSans"_s,
+FONT_STYLE(Body, u"Caelestia Sans"_s,
     FONT({ .size = 16 }),
     FONT({ .size = 14 }),
     FONT({ .size = 12 })
 )
-FONT_STYLE(Label, u"CaelestiaSans"_s,
+FONT_STYLE(Label, u"Caelestia Sans"_s,
     FONT({ .size = 14, .weight = QFont::Medium }),
     FONT({ .size = 12, .weight = QFont::Medium }),
     FONT({ .size = 11 })

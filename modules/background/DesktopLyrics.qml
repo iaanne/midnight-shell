@@ -38,7 +38,6 @@ Item {
     readonly property color safePrimary: useLightSet ? Colours.palette.m3primaryContainer : Colours.palette.m3primary
     readonly property color safeSecondary: useLightSet ? Colours.palette.m3secondaryContainer : Colours.palette.m3secondary
     readonly property color safeTertiary: useLightSet ? Colours.palette.m3tertiaryContainer : Colours.palette.m3tertiary
-    readonly property string sansFont: GlobalConfig.appearance.font.body.family || "Sans Serif"
     readonly property int alignment: Config.background.desktopLyrics.alignment
     readonly property bool autoHideFullscreen: Config.background.desktopLyrics.autoHideFullscreen
     readonly property bool autoHideTiled: Config.background.desktopLyrics.autoHideTiled
@@ -243,9 +242,9 @@ Item {
                 StyledText {
                     text: qsTr("Loading lyrics...")
                     color: root.safeSecondary
-                    font.pointSize: Tokens.font.title.medium.pointSize * root.lyricsScale
-                    font.family: Tokens.font.title.medium.family
-                    font.weight: Tokens.font.title.medium.weight
+                    // Built from the token builder so it keeps the font's
+                    // variable axes (ROND/opsz/wght) instead of a bare family.
+                    font: Tokens.font.title.builders.medium.size(Math.round(Tokens.font.title.medium.pointSize * root.lyricsScale)).build()
                 }
             }
 
@@ -384,9 +383,7 @@ Item {
                                 baseColor: root.safeSecondary
                                 activeColor: Colours.palette.m3primary
                                 horizontalAlignment: root.textAlignment
-                                font.family: root.sansFont
-                                font.pointSize: slot.bigPointSize
-                                font.weight: Font.Bold
+                                font: Tokens.font.body.builders.medium.size(Math.round(slot.bigPointSize)).weight(Font.Bold).build()
                             }
                         }
 
@@ -414,9 +411,7 @@ Item {
                             anchors.fill: parent
                             visible: !slot.karaoke
                             text: slot.line
-                            font.family: root.sansFont
-                            font.pointSize: slot.isCenter ? slot.bigPointSize : slot.smallPointSize
-                            font.weight: slot.isCenter ? Font.Bold : Tokens.font.body.small.weight
+                            font: Tokens.font.body.builders.medium.size(Math.round(slot.isCenter ? slot.bigPointSize : slot.smallPointSize)).weight(slot.isCenter ? Font.Bold : Tokens.font.body.small.weight).build()
                             color: slot.isCenter ? Colours.palette.m3primary : root.safeSecondary
                             opacity: slot.isCenter ? 1 : Math.max(0.3, 0.6 - (Math.abs(slot.distance) - 1) * 0.15)
                             wrapMode: Text.WordWrap
