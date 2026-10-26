@@ -5,6 +5,7 @@ import Caelestia.Config
 import Caelestia.I18n
 import qs.components
 import qs.components.effects
+import qs.components.images
 import qs.services
 
 StyledRect {
@@ -62,7 +63,14 @@ StyledRect {
         anchors.rightMargin: Tokens.padding.medium
         spacing: Tokens.spacing.medium
 
-        StyledRect {
+        StyledClippingRect {
+            id: iconTile
+
+            // The now-playing toast is the only one that uses the "music_note"
+            // icon, so use it to swap the icon tile for the current album art.
+            readonly property bool isNowPlaying: root.modelData.icon === "music_note"
+            readonly property string artUrl: iconTile.isNowPlaying ? Players.getArtUrl(Players.active) : ""
+
             radius: Tokens.rounding.large
             color: {
                 if (root.modelData.type === Toast.Success)
@@ -77,10 +85,19 @@ StyledRect {
             implicitWidth: implicitHeight
             implicitHeight: icon.implicitHeight + Tokens.padding.large
 
+            FadeImage {
+                id: art
+
+                anchors.fill: parent
+                source: iconTile.artUrl
+                visible: source != ""
+            }
+
             MaterialIcon {
                 id: icon
 
                 anchors.centerIn: parent
+                visible: !art.visible
                 text: root.modelData.icon
                 color: {
                     if (root.modelData.type === Toast.Success)
