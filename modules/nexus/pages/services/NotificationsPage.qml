@@ -19,6 +19,7 @@ PageBase {
             icon: "notifications_off"
         }
     ]
+    readonly property list<var> notifFullscreenValues: [NotifsFullscreen.On, NotifsFullscreen.Off]
 
     // Toast fullscreen visibility, mapped to GlobalConfig.utilities.toasts.fullscreen
     readonly property list<MenuItem> toastFullscreenItems: [
