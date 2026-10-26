@@ -1194,7 +1194,7 @@ StyledWindow {
             Region {
                 x: bg.x
                 y: root.blurFrameTop + carve(gapTop)
-                width: parent.width
+                width: bandOn(gapTop) ? bg.width : 0
                 height: Math.max(0, gapTop - 2 * carve(gapTop))
                 intersection: Intersection.Subtract
             }
@@ -1211,7 +1211,7 @@ StyledWindow {
             Region {
                 x: bg.x
                 y: root.height - root.blurFrameBottom - carve(gapBottom)
-                width: parent.width
+                width: bandOn(gapBottom) ? bg.width : 0
                 height: Math.max(0, gapBottom - 2 * carve(gapBottom))
                 intersection: Intersection.Subtract
             }
@@ -1229,7 +1229,7 @@ StyledWindow {
                 x: root.blurFrameLeft + carve(gapLeft)
                 y: bg.y
                 width: Math.max(0, gapLeft - 2 * carve(gapLeft))
-                height: parent.height
+                height: bandOn(gapLeft) ? bg.height : 0
                 intersection: Intersection.Subtract
             }
         }
@@ -1246,7 +1246,7 @@ StyledWindow {
                 x: root.width - root.blurFrameRight - carve(gapRight)
                 y: bg.y
                 width: Math.max(0, gapRight - 2 * carve(gapRight))
-                height: parent.height
+                height: bandOn(gapRight) ? bg.height : 0
                 intersection: Intersection.Subtract
             }
         }
