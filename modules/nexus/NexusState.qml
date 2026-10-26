@@ -8,7 +8,8 @@ QtObject {
     property bool animatingContainer
     property int currentPageIdx
     property list<int> subPageIdxStack
-    property bool searchOpen
+    property string searchQuery: ""
+    readonly property bool searchOpen: searchQuery.trim().length > 0
     property bool justUnlockedDevMode: false
     property string targetScreen: ""
 

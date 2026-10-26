@@ -35,10 +35,19 @@ ColumnLayout {
             CAnim {}
         }
 
-        Binding {
-            target: root.nState
-            property: "searchOpen"
-            value: searchField.text.length > 0
+        Component.onCompleted: searchField.text = root.nState.searchQuery
+        onTextChanged: {
+            if (root.nState.searchQuery !== searchField.text)
+                root.nState.searchQuery = searchField.text;
+        }
+    }
+
+    Connections {
+        target: root.nState
+
+        function onSearchQueryChanged(): void {
+            if (searchField.text !== root.nState.searchQuery)
+                searchField.text = root.nState.searchQuery;
         }
     }
 
