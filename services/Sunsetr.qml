@@ -6,14 +6,14 @@ import Quickshell.Io
 
 // Thin integration with the external sunsetr daemon (https://github.com/psi4j/sunsetr).
 //
-// The shell never spawns sunsetr: it is expected to already be running (systemd
-// user service / compositor autostart). We mirror its live state from the event
-// socket and drive it via the `sunsetr` CLI.
+// The shell never starts the sunsetr daemon: it is expected to already be
+// running (systemd user service / compositor autostart). We mirror its live
+// state from the event socket and drive it via the `sunsetr` CLI.
 //
-// The OSD's icon tap cycles a 3-state override through sunsetr presets:
-//   auto -> on (warmPreset) -> off (offPreset) -> auto ...
-// "auto" is sunsetr's own default schedule; the other two are static presets the
-// user must define under ~/.config/sunsetr/presets/<name>/sunsetr.toml.
+// The OSD's icon tap toggles the manual night light override on or off. The
+// automatic schedule is selected from Settings. The two manual presets are
+// created from the base config's night/day values when this service starts, but
+// only if the user has not defined them yet.
 Singleton {
     id: root
 
@@ -27,6 +27,8 @@ Singleton {
 
     property bool available: false
     readonly property bool running: eventSocket.connected
+    property bool presetsChecked: false
+    property bool presetsReady: false
 
     // Live state mirrored from sunsetr.
     property string activePreset: "default"
@@ -44,18 +46,69 @@ Singleton {
 
     readonly property string socketPath: `${Quickshell.env("XDG_RUNTIME_DIR")}/sunsetr-events.sock`
 
-    // Cycle: auto -> on -> off -> auto.
+    readonly property string presetScript: `
+config_home="$XDG_CONFIG_HOME"
+[ -n "$config_home" ] || config_home="$HOME/.config"
+base="$config_home/sunsetr/sunsetr.toml"
+presets="$config_home/sunsetr/presets"
+on_name="$1"
+off_name="$2"
+
+read_value() {
+    [ -f "$base" ] || return 0
+    sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$base" | head -n 1 | sed "s/[[:space:]]*#.*$//"
+}
+
+write_preset() {
+    [ -f "$1" ] && return
+    printf 'transition_mode = "static"\\nstatic_temp = %s\\nstatic_gamma = %s\\n' "$2" "$3" > "$1"
+}
+
+night_temp=$(read_value night_temp)
+night_gamma=$(read_value night_gamma)
+day_temp=$(read_value day_temp)
+day_gamma=$(read_value day_gamma)
+
+[ -n "$night_temp" ] || night_temp=3300
+[ -n "$night_gamma" ] || night_gamma=90
+[ -n "$day_temp" ] || day_temp=6500
+[ -n "$day_gamma" ] || day_gamma=100
+
+mkdir -p "$presets/$on_name" "$presets/$off_name"
+write_preset "$presets/$on_name/sunsetr.toml" "$night_temp" "$night_gamma"
+write_preset "$presets/$off_name/sunsetr.toml" "$day_temp" "$day_gamma"
+`
+
+    function setMode(newMode: string): void {
+        if (newMode === "auto") {
+            if (activePreset !== "default")
+                setPreset("default");
+        } else if (newMode === "on") {
+            if (activePreset !== onPreset)
+                setPreset(onPreset);
+        } else if (newMode === "off") {
+            if (activePreset !== offPreset)
+                setPreset(offPreset);
+        }
+    }
+
+    // The icon on the brightness OSD only toggles the manual override. The
+    // automatic schedule is left to the Settings selector.
     function toggle(): void {
-        if (mode === "auto")
-            setPreset(onPreset);
-        else if (mode === "on")
-            setPreset(offPreset);
-        else
-            setPreset("default");
+        setMode(active ? "off" : "on");
     }
 
     function setPreset(name: string): void {
+        if (!available)
+            return;
         Quickshell.execDetached(["sunsetr", "preset", name]);
+    }
+
+    function ensurePresets(): void {
+        if (presetsChecked)
+            return;
+        presetsChecked = true;
+        presetProc.running = true;
     }
 
     function applyStatus(json: string): void {
@@ -115,8 +168,10 @@ Singleton {
     }
 
     onAvailableChanged: {
-        if (available)
+        if (available) {
+            ensurePresets();
             requestConnection();
+        }
     }
 
     Process {
@@ -126,6 +181,13 @@ Singleton {
         command: ["sh", "-c", "command -v sunsetr >/dev/null"]
 
         onExited: exitCode => root.available = exitCode === 0 // qmllint disable signal-handler-parameters
+    }
+
+    Process {
+        id: presetProc
+
+        command: ["sh", "-c", root.presetScript, "sunsetr-presets", root.onPreset, root.offPreset]
+        onExited: exitCode => root.presetsReady = exitCode === 0 // qmllint disable signal-handler-parameters
     }
 
     // Seed full state on connect: the event socket only streams changes, not a snapshot.
