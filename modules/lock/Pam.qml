@@ -27,6 +27,8 @@ Scope {
     property string lockMessage
     property int state
     property string buffer
+    // Password retained only until the login keyring unlock process exits.
+    property string keyringPassword
 
     signal flashMsg
 
@@ -73,6 +75,33 @@ Scope {
                 obj.state = Pam.None;
     }
 
+    // Best-effort unlock of the login keyring with the password just used. A
+    // fingerprint/face unlock produces no password and therefore leaves the
+    // keyring locked.
+    function tryUnlockKeyring(): void {
+        if (!GlobalConfig.lock.unlockKeyring || root.keyringPassword.length === 0)
+            return;
+
+        // A keyring prompt is already waiting in the shell UI (for example for
+        // Default_keyring). Restarting gnome-keyring-daemon would cancel it, and
+        // the prompt must be answered after unlock instead.
+        if (KeyringPrompter.pendingCount > 0) {
+            root.clearKeyringPassword();
+            return;
+        }
+
+        keyringUnlockProc.exec({
+            command: ["bash", Quickshell.shellPath("assets/keyring/unlock.sh")],
+            environment: ({
+                    UNLOCK_PASSWORD: root.keyringPassword
+                })
+        });
+    }
+
+    function clearKeyringPassword(): void {
+        root.keyringPassword = "";
+    }
+
     PamContext {
         id: passwd
 
@@ -90,14 +119,20 @@ Scope {
             if (!responseRequired)
                 return;
 
+            // Keep the password long enough to unlock the login keyring after
+            // a successful authentication.
+            root.keyringPassword = root.buffer;
             respond(root.buffer);
             root.buffer = "";
         }
 
         onCompleted: res => {
-            if (res === PamResult.Success)
+            if (res === PamResult.Success) {
+                root.tryUnlockKeyring();
                 return root.lock.unlock();
+            }
 
+            root.clearKeyringPassword();
             root.clearTransientState();
 
             if (res === PamResult.Error)
@@ -120,6 +155,12 @@ Scope {
             if (root.state !== Pam.MaxTries)
                 root.state = Pam.None;
         }
+    }
+
+    Process {
+        id: keyringUnlockProc
+
+        onExited: root.clearKeyringPassword()
     }
 
     ManualPamContext {
@@ -159,6 +200,7 @@ Scope {
                 fprint.reset();
                 howdy.reset();
                 root.buffer = "";
+                root.keyringPassword = "";
                 root.state = Pam.None;
                 root.lockMessage = "";
             }

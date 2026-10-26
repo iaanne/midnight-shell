@@ -38,6 +38,10 @@ qml_module(caelestia-services
         sessionmanager.hpp
         discordipc.cpp
         discordipc.hpp
+        secretexchange.cpp
+        secretexchange.hpp
+        keyringprompter.cpp
+        keyringprompter.hpp
         networkusage.cpp
         QuickShare/QuickShareDiscovery.cpp
         QuickShare/QuickShareDiscovery.hpp

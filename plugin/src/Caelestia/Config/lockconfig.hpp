@@ -19,6 +19,13 @@ class LockConfig : public settings::ObjectNode {
     CONFIG_GLOBAL_PROPERTY(bool, triggerHowdyOnWake, true)
     CONFIG_PROPERTY(bool, hideNotifs, false)
     CONFIG_GLOBAL_PROPERTY(bool, lockOnStartup, false)
+    // Unlock the login keyring with the password entered on the lock screen.
+    CONFIG_GLOBAL_PROPERTY(bool, unlockKeyring, true)
+    // Render GNOME keyring / GPG prompts in the shell instead of gcr-prompter.
+    CONFIG_GLOBAL_PROPERTY(bool, keyringPrompter, true)
+    // Ask the shell to replace a running gcr-prompter. Left off by default so
+    // another prompter (for example GNOME Shell's) is never disturbed.
+    CONFIG_GLOBAL_PROPERTY(bool, keyringPrompterTakeover, false)
     // Fork default: session buttons were always available on hover before
     // this option existed upstream
     CONFIG_GLOBAL_PROPERTY(bool, enableSessionControls, true)

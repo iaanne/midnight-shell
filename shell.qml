@@ -21,6 +21,7 @@ import "modules/areapicker"
 import "modules/lock"
 import QtQuick
 import "modules/polkit"
+import "modules/keyring"
 import Quickshell.Services.SystemTray
 
 ShellRoot {
@@ -32,6 +33,18 @@ ShellRoot {
         target: ShellState
         property: "shellRoot"
         value: root
+    }
+
+    Binding {
+        target: KeyringPrompter
+        property: "enabled"
+        value: GlobalConfig.lock.keyringPrompter
+    }
+
+    Binding {
+        target: KeyringPrompter
+        property: "takeover"
+        value: GlobalConfig.lock.keyringPrompterTakeover
     }
 
     GSFLoader {}
@@ -48,6 +61,9 @@ ShellRoot {
         id: lock
     }
     PolkitModule {}
+    KeyringPrompt {
+        sessionLocked: lock.lock.locked
+    }
 
     Variants {
         model: Quickshell.screens.filter(s => (GlobalConfig.shimeji?.enabled ?? false) && (GlobalConfig.shimeji?.path?.length ?? 0) > 0 && !Strings.testRegexList(GlobalConfig.shimeji?.excludedScreens ?? [], s.name))

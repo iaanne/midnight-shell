@@ -26,7 +26,7 @@ This fork adds the following features on top of the official shell:
 - **Dashboard**: Developer console terminal tab with history and autocomplete.
 - **Bar**: MacOS-style app dock, Material workspace icons, DND toggle, and a live drag-and-drop components editor.
 - **Desktop**: Floating lyrics, Shimeji pets, dynamic wallpaper recoloring, and Bezel Mode.
-- **Lock Screen**: Configurable auto-lock on startup (`lockOnStartup`), redesigned profile and clock layout, and improved forecast UI.
+- **Lock Screen**: Configurable auto-lock on startup (`lockOnStartup`), optional login-keyring unlock on password unlock (`unlockKeyring`), and a built-in GNOME keyring/GPG prompter (`keyringPrompter`) that renders unlock and password prompts in the shell instead of `gcr-prompter`, holding them until the screen is unlocked, along with a redesigned profile and clock layout and improved forecast UI.
 - **Compositor-agnostic**: Full Niri support today, behind a neutral backend seam with other compositors pluggable later.
 - **QuickShare**: Supports the android feature, allowing file transfers between your devices (w/ avahi daemon)
 - **Polkit**: Supplies its own built-in polkit daemon, with animations.
@@ -244,7 +244,8 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
 >   `favouriteApps`, `hiddenApps`, `actions`)
 > - `launcher.useFuzzy` (`apps`, `actions`, `schemes`, `variants`, `wallpapers`)
 > - `notifs` (`expire`, `fullscreen`, `defaultExpireTimeout`, `fullscreenExpireTimeout`, `actionOnClick`)
-> - `lock` (`enableFprint`, `maxFprintTries`)
+> - `lock` (`enableFprint`, `maxFprintTries`, `unlockKeyring`, `keyringPrompter`,
+>   `keyringPrompterTakeover`)
 > - `nexus` (`networkRescanInterval`)
 > - `utilities.toasts` (all except `fullscreen`)
 > - `utilities.vpn` (`enabled`, `provider`)
@@ -1073,7 +1074,10 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
         "recolourLogo": true,
         "enableHowdy": true,
         "maxHowdyTries": 3,
-        "triggerHowdyOnWake": true
+        "triggerHowdyOnWake": true,
+        "unlockKeyring": true,
+        "keyringPrompter": true,
+        "keyringPrompterTakeover": false
     },
     "nexus": {
         "networkRescanInterval": 15000,
