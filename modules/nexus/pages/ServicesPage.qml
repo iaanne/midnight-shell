@@ -28,6 +28,23 @@ PageBase {
         }
     ]
 
+    // Night light modes, ordered to match Sunsetr.mode (auto, on, off)
+    readonly property list<MenuItem> nightLightItems: [
+        MenuItem {
+            text: Tr.trCtx("Automatic", "night light mode")
+            icon: "schedule"
+        },
+        MenuItem {
+            text: Tr.trCtx("Always on", "night light mode")
+            icon: "bedtime"
+        },
+        MenuItem {
+            text: Tr.trCtx("Off", "night light mode")
+            icon: "light_mode"
+        }
+    ]
+    readonly property list<string> nightLightModes: ["auto", "on", "off"]
+
     title: Tr.tr("Services")
 
     Component.onCompleted: Lyrics.syncProviders()
@@ -66,6 +83,22 @@ PageBase {
             text: Tr.tr("Notifications")
             subtext: Tr.tr("Notifications, toasts, timeouts")
             onClicked: root.nState.openSubPage(1)
+        }
+
+        // Display
+        SectionHeader {
+            text: Tr.tr("Display")
+        }
+
+        SelectRow {
+            first: true
+            last: true
+            label: Tr.tr("Night light")
+            subtext: !Sunsetr.available ? Tr.tr("sunsetr is not installed") : !Sunsetr.running ? Tr.tr("sunsetr is not running") : Tr.tr("Warm colour temperature after sunset")
+            menuItems: root.nightLightItems
+            active: root.nightLightItems[Math.max(0, root.nightLightModes.indexOf(Sunsetr.mode))]
+            enabled: Sunsetr.available && Sunsetr.running
+            onSelected: item => Sunsetr.setMode(root.nightLightModes[root.nightLightItems.indexOf(item)])
         }
 
         // Connections
