@@ -112,41 +112,52 @@ PageBase {
             text: Tr.tr("Weather")
         }
 
-        // Placeholder until the map-based location picker lands
+        // Weather location input
+        TextFieldRow {
+            first: true
+            label: Tr.tr("Location")
+            subtext: Tr.tr("City name or coordinates (lat,lon). Leave empty for auto-detect")
+            value: GlobalConfig.services.weatherLocation
+            placeholderText: Tr.tr("Auto-detect")
+            onEditingFinished: value => {
+                GlobalConfig.services.weatherLocation = value;
+                Weather.reload();
+            }
+        }
+
+        // Current detected location display
+        InfoRow {
+            label: Tr.tr("Current location")
+            subtext: Weather.city || Tr.tr("Detecting...")
+            icon: "location_on"
+        }
+
+        // Action buttons
         ConnectedRect {
             Layout.fillWidth: true
-            first: true
             last: true
-            implicitHeight: comingSoon.implicitHeight + Tokens.padding.extraLarge * 2
+            implicitHeight: buttonRow.implicitHeight + Tokens.padding.medium * 2
 
-            ColumnLayout {
-                id: comingSoon
-
+            RowLayout {
+                id: buttonRow
                 anchors.centerIn: parent
-                width: parent.width - Tokens.padding.largeIncreased * 2
-                spacing: Tokens.padding.extraSmall
+                spacing: Tokens.spacing.small
 
-                MaterialIcon {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "map"
-                    color: Colours.palette.m3outlineVariant
-                    fontStyle: Tokens.font.icon.extraLarge
+                IconTextButton {
+                    text: Tr.tr("Auto-detect")
+                    icon: "my_location"
+                    onClicked: {
+                        GlobalConfig.services.weatherLocation = "";
+                        Weather.reload();
+                    }
                 }
 
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: Tr.tr("Location picker coming soon")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.title.small
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    text: Tr.tr("Choose your weather location on a map in a future update")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.body.small
+                IconTextButton {
+                    text: Tr.tr("Refresh")
+                    icon: "refresh"
+                    onClicked: {
+                        Weather.reload();
+                    }
                 }
             }
         }
