@@ -78,7 +78,7 @@ Item {
                     y: -root.calcTopOff(amPmMetrics)
                 }
 
-                text: Time.amPmStr
+                text: Config.lock.uppercaseAmPm ? Time.amPmStr.toUpperCase() : Time.amPmStr.toLowerCase()
                 color: Colours.palette.m3onSurface
                 font: Tokens.font.headline.builders.small.scale(2 * root.centerScale).width(30).build()
 

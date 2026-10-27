@@ -103,6 +103,7 @@ class BarClock : public settings::ObjectNode {
     CONFIG_PROPERTY(bool, showDate, false)
     CONFIG_PROPERTY(bool, showIcon, true)
     CONFIG_PROPERTY(bool, showSeconds, false)
+    CONFIG_PROPERTY(bool, uppercaseAmPm, false)
 };
 
 class BarDock : public settings::ObjectNode {

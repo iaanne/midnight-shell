@@ -52,13 +52,25 @@ PageBase {
         }
 
         ToggleRow {
-            last: true
             text: qsTr("Show seconds")
             configNode: root.targetConfig.bar.clock
             propertyName: "showSeconds"
             checked: root.targetConfig.bar.clock.showSeconds
             onToggled: {
                 root.targetConfig.bar.clock.showSeconds = checked;
+                root.targetConfig.save();
+            }
+        }
+
+        ToggleRow {
+            last: true
+            text: qsTr("Uppercase AM/PM")
+            subtext: qsTr("Applies in 12-hour mode")
+            configNode: root.targetConfig.bar.clock
+            propertyName: "uppercaseAmPm"
+            checked: root.targetConfig.bar.clock.uppercaseAmPm
+            onToggled: {
+                root.targetConfig.bar.clock.uppercaseAmPm = checked;
                 root.targetConfig.save();
             }
         }

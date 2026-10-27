@@ -690,7 +690,8 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
         "clock": {
             "background": false,
             "showDate": false,
-            "showIcon": true
+            "showIcon": true,
+            "uppercaseAmPm": false
         },
         "dock": {
             "monitorCenter": true,
@@ -1072,6 +1073,7 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
         "maxFprintTries": 3,
         "profilePicShape": 12,
         "recolourLogo": true,
+        "uppercaseAmPm": true,
         "enableHowdy": true,
         "maxHowdyTries": 3,
         "triggerHowdyOnWake": true,

@@ -117,7 +117,7 @@ StyledRect {
             visible: active
 
             sourceComponent: StyledText {
-                text: Time.amPmStr.toLowerCase()
+                text: Config.bar.clock.uppercaseAmPm ? Time.amPmStr.toUpperCase() : Time.amPmStr.toLowerCase()
                 font: root.withFamily(Tokens.font.body.builders.small).scale(0.9).build()
                 color: root.colour
             }
@@ -236,7 +236,7 @@ StyledRect {
             visible: active
 
             sourceComponent: StyledText {
-                text: Time.amPmStr.toLowerCase()
+                text: Config.bar.clock.uppercaseAmPm ? Time.amPmStr.toUpperCase() : Time.amPmStr.toLowerCase()
                 font: root.withFamily(Tokens.font.body.builders.small).scale(0.9).build()
                 color: root.colour
             }

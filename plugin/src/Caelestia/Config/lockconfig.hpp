@@ -11,6 +11,7 @@ class LockConfig : public settings::ObjectNode {
     CONFIG_PROPERTY(bool, enabled, true)
     CONFIG_PROPERTY(bool, useWallpaper, false)
     CONFIG_PROPERTY(bool, recolourLogo, true)
+    CONFIG_PROPERTY(bool, uppercaseAmPm, true)
     CONFIG_GLOBAL_PROPERTY(bool, enableFprint, true)
     CONFIG_GLOBAL_PROPERTY(int, maxFprintTries, 3)
     CONFIG_GLOBAL_PROPERTY(int, profilePicShape, 12)

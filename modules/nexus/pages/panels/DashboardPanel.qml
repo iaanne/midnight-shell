@@ -191,7 +191,6 @@ PageBase {
 
         SelectRow {
             Layout.fillWidth: true
-            last: true
             label: qsTr("Lock screen profile picture shape")
             subtext: qsTr("Choose the shape of the profile picture on the lock screen")
             configNode: root.targetConfig.lock
@@ -208,6 +207,19 @@ PageBase {
             menuItems: lockShapeItems
             onSelected: item => {
                 root.targetConfig.lock.profilePicShape = item.value;
+                root.targetConfig.save();
+            }
+        }
+
+        ToggleRow {
+            Layout.fillWidth: true
+            text: qsTr("Uppercase lock clock AM/PM")
+            subtext: qsTr("Applies to the lock screen clock in 12-hour mode")
+            configNode: root.targetConfig.lock
+            propertyName: "uppercaseAmPm"
+            checked: root.targetConfig.lock.uppercaseAmPm
+            onToggled: {
+                root.targetConfig.lock.uppercaseAmPm = checked;
                 root.targetConfig.save();
             }
         }
