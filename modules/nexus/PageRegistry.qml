@@ -480,6 +480,7 @@ QtObject {
                 "quota",
                 "rate limit",
                 "podman",
+                "docker",
                 "containers",
                 "hide tabs",
                 "disable tabs",

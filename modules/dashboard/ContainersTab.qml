@@ -103,7 +103,7 @@ Item {
                 }
 
                 StyledText {
-                    text: Containers.engines.length > 1 ? Tr.tr("Docker and Podman containers that are on or idle") : Tr.tr("%1 containers that are on or idle").arg(Containers.titleCase(Containers.activeEngine))
+                    text: Containers.engines.length > 1 ? Tr.tr("Docker and Podman containers that are on or idle") : Containers.engines.length === 1 ? Tr.tr("%1 containers that are on or idle").arg(Containers.titleCase(Containers.activeEngine)) : Tr.tr("No container engine found")
                     font: Tokens.font.body.small
                     color: Colours.palette.m3onSurfaceVariant
                 }

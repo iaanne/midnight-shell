@@ -154,6 +154,7 @@ Singleton {
     Process {
         id: detectProc
 
+        running: true
         // Print the version of every engine found on PATH; the caller filters
         // by content so a wrapper script or alias cannot fake the engine.
         command: ["sh", "-c", "for c in " + allEngines + "; do command -v \"$c\" >/dev/null 2>&1 || continue; \"$c\" --version 2>/dev/null | head -n1; done"]

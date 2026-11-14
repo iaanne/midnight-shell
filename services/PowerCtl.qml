@@ -14,6 +14,20 @@ Singleton {
     property int chargeLimit: -1
     readonly property int profile: usingAsusctl ? asusProfile : PowerProfiles.profile
 
+    // UPower charge threshold (battery care) support, probed on demand.
+    property string upowerBatteryPath: ""
+    property bool chargeThresholdSupported: false
+    property bool chargeThresholdEnabled: false
+    property bool chargeThresholdBusy: false
+    property int chargeThresholdSettingsSupported: 0
+    property int chargeStartThreshold: 0
+    property int chargeEndThreshold: 0
+
+    // Bit 4 means the firmware chooses the actual thresholds.
+    readonly property bool chargeFirmwareManaged: (chargeThresholdSettingsSupported & 4) !== 0
+    // Bit 2 means a charge end threshold is available.
+    readonly property bool chargeEndThresholdSupported: (chargeThresholdSettingsSupported & 2) !== 0 && chargeEndThreshold > 0
+
     function setProfile(p: int): void {
         if (!usingAsusctl) {
             PowerProfiles.profile = p;
@@ -50,19 +64,55 @@ Singleton {
         batGetProc.running = true;
     }
 
-    // UPower charge threshold (battery care) support, probed on demand.
-    property string upowerBatteryPath: ""
-    property bool chargeThresholdSupported: false
-    property bool chargeThresholdEnabled: false
-    property bool chargeThresholdBusy: false
-    property int chargeThresholdSettingsSupported: 0
-    property int chargeStartThreshold: 0
-    property int chargeEndThreshold: 0
+    function setChargeLimit(limit: int): void {
+        if (!usingAsusctl)
+            return;
 
-    // Bit 4 means the firmware chooses the actual thresholds.
-    readonly property bool chargeFirmwareManaged: (chargeThresholdSettingsSupported & 4) !== 0
-    // Bit 2 means a charge end threshold is available.
-    readonly property bool chargeEndThresholdSupported: (chargeThresholdSettingsSupported & 2) !== 0 && chargeEndThreshold > 0
+        const n = Math.max(20, Math.min(100, limit));
+
+        // Optimistic, so the slider snaps to the committed value.
+        chargeLimit = n;
+
+        batSetProc.pending = n;
+        batSetProc.retry = false;
+        batSetProc.command = ["asusctl", "battery", "limit", n.toString()];
+        if (batSetProc.running)
+            batSetProc.running = false;
+        batSetProc.running = true;
+    }
+
+    function profileName(p: int, capitalized: bool): string {
+        let name = "balanced";
+        if (p === PowerProfile.PowerSaver)
+            name = "quiet";
+        else if (p === PowerProfile.Performance)
+            name = "performance";
+        return capitalized ? name.charAt(0).toUpperCase() + name.slice(1) : name;
+    }
+
+    function parseProfile(output: string): int {
+        const match = output.match(/\b(low-?power|quiet|balanced|performance|custom)\b/i);
+        if (!match)
+            return -1;
+
+        const name = match[1].toLowerCase();
+        if (name === "performance")
+            return PowerProfile.Performance;
+        if (name === "quiet" || name.startsWith("low"))
+            return PowerProfile.PowerSaver;
+        return PowerProfile.Balanced;
+    }
+
+    function parseChargeLimit(output: string): int {
+        const m = output.match(/end[^\d\n]{0,15}(\d{1,3})/i)
+            ?? output.match(/(?:limit|threshold)[^\d\n]{0,15}(\d{1,3})/i)
+            ?? output.match(/\b(\d{1,3})\b/);
+        if (!m)
+            return -1;
+
+        const n = parseInt(m[1], 10);
+        return n >= 20 && n <= 100 ? n : -1;
+    }
 
     function refreshChargeThreshold(): void {
         if (upowerProc.running || upowerPropsProc.running)
@@ -149,58 +199,8 @@ Singleton {
         }
     }
 
-    function setChargeLimit(limit: int): void {
-        if (!usingAsusctl)
-            return;
-
-        const n = Math.max(20, Math.min(100, limit));
-
-        // Optimistic, so the slider snaps to the committed value.
-        chargeLimit = n;
-
-        batSetProc.pending = n;
-        batSetProc.retry = false;
-        batSetProc.command = ["asusctl", "battery", "limit", n.toString()];
-        if (batSetProc.running)
-            batSetProc.running = false;
-        batSetProc.running = true;
-    }
-
-    function profileName(p: int, capitalized: bool): string {
-        let name = "balanced";
-        if (p === PowerProfile.PowerSaver)
-            name = "quiet";
-        else if (p === PowerProfile.Performance)
-            name = "performance";
-        return capitalized ? name.charAt(0).toUpperCase() + name.slice(1) : name;
-    }
-
     // Returns -1 when the output contains no known profile name.
-    function parseProfile(output: string): int {
-        const match = output.match(/\b(low-?power|quiet|balanced|performance|custom)\b/i);
-        if (!match)
-            return -1;
-
-        const name = match[1].toLowerCase();
-        if (name === "performance")
-            return PowerProfile.Performance;
-        if (name === "quiet" || name.startsWith("low"))
-            return PowerProfile.PowerSaver;
-        return PowerProfile.Balanced;
-    }
-
     // Returns -1 when the output contains no usable limit (20-100).
-    function parseChargeLimit(output: string): int {
-        const m = output.match(/end[^\d\n]{0,15}(\d{1,3})/i)
-            ?? output.match(/(?:limit|threshold)[^\d\n]{0,15}(\d{1,3})/i)
-            ?? output.match(/\b(\d{1,3})\b/);
-        if (!m)
-            return -1;
-
-        const n = parseInt(m[1], 10);
-        return n >= 20 && n <= 100 ? n : -1;
-    }
-
     Process {
         id: detectProc
 

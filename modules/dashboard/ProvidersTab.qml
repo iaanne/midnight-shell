@@ -142,8 +142,16 @@ Item {
     function openDashboard(entry: var): void {
         const url = entry.link && entry.link.length > 0 ? entry.link : "";
         const profile = entry.dashboardProfile && entry.dashboardProfile.length > 0 ? entry.dashboardProfile : "";
-        if (profile) {
-            Quickshell.execDetached(["zen-browser", "-P", profile, "--new-window", url || "https://tokenharbor.ai/dashboard"]);
+        const browser = Config.dashboard.providersBrowser.trim().split(/\s+/).filter(part => part.length > 0);
+        // Only pass a browser profile when a custom browser is configured;
+        // profile names are system specific and the system default browser
+        // cannot use them.
+        if (browser.length > 0) {
+            const args = [...browser];
+            if (profile)
+                args.push("-P", profile);
+            args.push(url || "https://tokenharbor.ai/dashboard");
+            Quickshell.execDetached(args);
             return;
         }
         if (url.length > 0)
