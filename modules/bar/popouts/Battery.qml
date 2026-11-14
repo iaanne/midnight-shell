@@ -37,7 +37,7 @@ Column {
     Component.onCompleted: {
         PowerCtl.fetchProfile();
         PowerCtl.fetchChargeLimit();
-        ChargeThreshold.refresh();
+        PowerCtl.refreshChargeThreshold();
     }
 
     StyledText {
@@ -246,7 +246,7 @@ Column {
     Column {
         id: upowerChargeSection
 
-        visible: ChargeThreshold.supported && !PowerCtl.usingAsusctl
+        visible: PowerCtl.chargeThresholdSupported && !PowerCtl.usingAsusctl
 
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: Tokens.spacing.small
@@ -262,16 +262,16 @@ Column {
 
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
-                text: ChargeThreshold.enabled ? Tr.tr("Battery care enabled") : Tr.tr("Charge to full")
+                text: PowerCtl.chargeThresholdEnabled ? Tr.tr("Battery care enabled") : Tr.tr("Charge to full")
             }
 
             StyledSwitch {
                 id: chargeThresholdSwitch
 
                 anchors.verticalCenter: parent.verticalCenter
-                checked: ChargeThreshold.enabled
-                disabled: ChargeThreshold.busy
-                onToggled: ChargeThreshold.setEnabled(checked)
+                checked: PowerCtl.chargeThresholdEnabled
+                disabled: PowerCtl.chargeThresholdBusy
+                onToggled: PowerCtl.setChargeThresholdEnabled(checked)
             }
         }
 
@@ -281,10 +281,10 @@ Column {
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
             text: {
-                if (!ChargeThreshold.enabled)
+                if (!PowerCtl.chargeThresholdEnabled)
                     return Tr.tr("The battery charges to 100%");
-                if (ChargeThreshold.endThresholdSupported)
-                    return Tr.tr("Stops charging at %1%").arg(ChargeThreshold.endThreshold);
+                if (PowerCtl.chargeEndThresholdSupported)
+                    return Tr.tr("Stops charging at %1%").arg(PowerCtl.chargeEndThreshold);
                 return Tr.tr("The firmware chooses the upper limit");
             }
             color: Colours.palette.m3onSurfaceVariant

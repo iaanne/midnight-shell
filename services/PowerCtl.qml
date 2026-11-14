@@ -50,6 +50,105 @@ Singleton {
         batGetProc.running = true;
     }
 
+    // UPower charge threshold (battery care) support, probed on demand.
+    property string upowerBatteryPath: ""
+    property bool chargeThresholdSupported: false
+    property bool chargeThresholdEnabled: false
+    property bool chargeThresholdBusy: false
+    property int chargeThresholdSettingsSupported: 0
+    property int chargeStartThreshold: 0
+    property int chargeEndThreshold: 0
+
+    // Bit 4 means the firmware chooses the actual thresholds.
+    readonly property bool chargeFirmwareManaged: (chargeThresholdSettingsSupported & 4) !== 0
+    // Bit 2 means a charge end threshold is available.
+    readonly property bool chargeEndThresholdSupported: (chargeThresholdSettingsSupported & 2) !== 0 && chargeEndThreshold > 0
+
+    function refreshChargeThreshold(): void {
+        if (upowerProc.running || upowerPropsProc.running)
+            return;
+        upowerProc.running = true;
+    }
+
+    function setChargeThresholdEnabled(value: bool): void {
+        if (!upowerBatteryPath || chargeSetProc.running)
+            return;
+
+        // Optimistic update so the switch responds immediately.
+        chargeThresholdEnabled = value;
+        chargeThresholdBusy = true;
+
+        chargeSetProc.command = ["busctl", "call", "org.freedesktop.UPower", upowerBatteryPath, "org.freedesktop.UPower.Device", "EnableChargeThreshold", "b", value ? "true" : "false"];
+        chargeSetProc.running = true;
+    }
+
+    function chargePropertyValue(lines: var, index: int): string {
+        const parts = (lines[index] ?? "").trim().split(" ");
+        return parts.length > 1 ? parts[1] : "";
+    }
+
+    function chargeBoolValue(lines: var, index: int): bool {
+        return chargePropertyValue(lines, index) === "true";
+    }
+
+    function chargeIntValue(lines: var, index: int): int {
+        return parseInt(chargePropertyValue(lines, index), 10) || 0;
+    }
+
+    Process {
+        id: upowerProc
+
+        command: ["upower", "-e"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n").filter(line => line.length > 0);
+                const path = lines.find(line => line.includes("battery_"));
+
+                if (!path) {
+                    root.upowerBatteryPath = "";
+                    root.chargeThresholdSupported = false;
+                    return;
+                }
+
+                root.upowerBatteryPath = path.trim();
+                upowerPropsProc.command = ["busctl", "get-property", "org.freedesktop.UPower", root.upowerBatteryPath, "org.freedesktop.UPower.Device", "ChargeThresholdSupported", "ChargeThresholdEnabled", "ChargeThresholdSettingsSupported", "ChargeStartThreshold", "ChargeEndThreshold"];
+                upowerPropsProc.running = true;
+            }
+        }
+    }
+
+    Process {
+        id: upowerPropsProc
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                if (lines.length < 5) {
+                    root.chargeThresholdSupported = false;
+                    return;
+                }
+
+                root.chargeThresholdSupported = root.chargeBoolValue(lines, 0);
+                root.chargeThresholdEnabled = root.chargeBoolValue(lines, 1);
+                root.chargeThresholdSettingsSupported = root.chargeIntValue(lines, 2);
+                root.chargeStartThreshold = root.chargeIntValue(lines, 3);
+                root.chargeEndThreshold = root.chargeIntValue(lines, 4);
+            }
+        }
+    }
+
+    Process {
+        id: chargeSetProc
+
+        onExited: exitCode => {
+            root.chargeThresholdBusy = false;
+            if (exitCode !== 0)
+                console.warn("PowerCtl: EnableChargeThreshold failed with exit code", exitCode);
+            root.refreshChargeThreshold();
+        }
+    }
+
     function setChargeLimit(limit: int): void {
         if (!usingAsusctl)
             return;
