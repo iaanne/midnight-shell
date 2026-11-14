@@ -304,7 +304,7 @@ PageBase {
         ToggleRow {
             Layout.fillWidth: true
             text: qsTr("Containers")
-            subtext: qsTr("Podman containers. Runs podman ps only while the tab is open")
+            subtext: qsTr("Docker and Podman containers. Runs the engine CLI only while the tab is open")
             configNode: root.targetConfig.dashboard
             propertyName: "showContainers"
             checked: root.targetConfig.dashboard.showContainers

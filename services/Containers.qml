@@ -4,14 +4,23 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Polls Podman and splits containers into two groups for the dashboard
-// "Containers" tab: running ("on") and everything else ("idle").
+// Polls the container engine (Podman or Docker) and splits containers into two
+// groups for the dashboard "Containers" tab: running ("on") and everything
+// else ("idle").
 //
-// The Podman CLI is used instead of the REST API so the tab works with both
+// The engine CLI is used instead of the REST API so the tab works with both
 // rootless and system containers without extra socket configuration.
+//
+// Engines are detected at startup. The check is verbose on purpose: some
+// systems alias one command to another, so the version output is matched
+// ("Docker" for docker, "podman" for podman) instead of trusting the command
+// name alone.
 Singleton {
     id: root
 
+    readonly property string allEngines: "docker podman"
+    property var engines: []
+    property string activeEngine: ""
     property int refreshInterval: 5000
     property var containers: []
     property var running: []
@@ -26,11 +35,31 @@ Singleton {
     property string actionError: ""
     property string actionStderr: ""
 
+    // Detect engine CLIs and verify them with their version output.
+    function detectEngines(): void {
+        engines = [];
+        activeEngine = "";
+        detectProc.running = true;
+    }
+
+    function setActiveEngine(engine: string): void {
+        if (!engines.includes(engine) || activeEngine === engine)
+            return;
+        activeEngine = engine;
+        containers = [];
+        running = [];
+        idle = [];
+        errorMessage = "";
+        lastUpdated = null;
+        refresh();
+    }
+
     function refresh(): void {
-        if (proc.running)
+        if (!activeEngine || proc.running || detectProc.running)
             return;
         root.loading = true;
         root.stderrText = "";
+        proc.command = [activeEngine, "ps", "-a", "--format", "json"];
         proc.running = true;
     }
 
@@ -50,14 +79,14 @@ Singleton {
     }
 
     function runAction(verb: string, id: string): void {
-        if (actionProc.running || !id)
+        if (actionProc.running || !id || !activeEngine)
             return;
         root.actionVerb = verb;
         root.actionId = id;
         root.actionError = "";
         root.actionStderr = "";
         root.actionRunning = true;
-        actionProc.command = ["podman", verb, id];
+        actionProc.command = [activeEngine, verb, id];
         actionProc.running = true;
     }
 
@@ -123,9 +152,32 @@ Singleton {
     }
 
     Process {
+        id: detectProc
+
+        // Print the version of every engine found on PATH; the caller filters
+        // by content so a wrapper script or alias cannot fake the engine.
+        command: ["sh", "-c", "for c in " + allEngines + "; do command -v \"$c\" >/dev/null 2>&1 || continue; \"$c\" --version 2>/dev/null | head -n1; done"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const found = [];
+                const lines = text.trim().split("\n").filter(line => line.length > 0);
+                for (const engine of allEngines.split(" ")) {
+                    if (lines.some(line => line.toLowerCase().includes(engine)))
+                        found.push(engine);
+                }
+                root.engines = found;
+                root.activeEngine = found.length > 0 ? found[0] : "";
+                if (root.activeEngine)
+                    root.refresh();
+            }
+        }
+    }
+
+    Process {
         id: proc
 
-        command: ["podman", "ps", "-a", "--format", "json"]
+        command: []
 
         stdout: StdioCollector {
             onStreamFinished: root.handleOutput(text)
@@ -143,7 +195,7 @@ Singleton {
         onExited: exitCode => { // qmllint disable signal-handler-parameters
             if (exitCode !== 0) {
                 const detail = root.stderrText.trim();
-                root.errorMessage = detail || `podman exited with code ${exitCode}`;
+                root.errorMessage = detail || `${root.activeEngine} exited with code ${exitCode}`;
                 root.containers = [];
                 root.running = [];
                 root.idle = [];
@@ -165,7 +217,7 @@ Singleton {
         onExited: exitCode => { // qmllint disable signal-handler-parameters
             root.actionRunning = false;
             if (exitCode !== 0)
-                root.actionError = root.actionStderr.trim() || `podman ${root.actionVerb} exited with code ${exitCode}`;
+                root.actionError = root.actionStderr.trim() || `${root.activeEngine} ${root.actionVerb} exited with code ${exitCode}`;
             root.actionVerb = "";
             root.actionId = "";
             root.refresh();

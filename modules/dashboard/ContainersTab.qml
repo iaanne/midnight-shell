@@ -61,28 +61,28 @@ Item {
 
     function triggerAction(container: var): void {
         if (container.state === "paused")
-            Podman.unpauseContainer(container.id);
+            Containers.unpauseContainer(container.id);
         else if (container.running)
-            Podman.stopContainer(container.id);
+            Containers.stopContainer(container.id);
         else
-            Podman.startContainer(container.id);
+            Containers.startContainer(container.id);
     }
 
     Timer {
-        interval: Podman.refreshInterval
+        interval: Containers.refreshInterval
         running: root.paneActive
         repeat: true
-        onTriggered: Podman.refresh()
+        onTriggered: Containers.refresh()
     }
 
     onPaneActiveChanged: {
         if (paneActive)
-            Podman.refresh();
+            Containers.refresh();
     }
 
     Component.onCompleted: {
         if (paneActive)
-            Podman.refresh();
+            Containers.refresh();
     }
 
     ColumnLayout {
@@ -103,9 +103,47 @@ Item {
                 }
 
                 StyledText {
-                    text: Tr.tr("Podman containers that are on or idle")
+                    text: Containers.engines.length > 1 ? Tr.tr("Docker and Podman containers that are on or idle") : Tr.tr("%1 containers that are on or idle").arg(Containers.titleCase(Containers.activeEngine))
                     font: Tokens.font.body.small
                     color: Colours.palette.m3onSurfaceVariant
+                }
+            }
+
+            // Engine picker; only shown when both engines are detected.
+            Row {
+                visible: Containers.engines.length > 1
+                spacing: Tokens.spacing.small
+
+                Repeater {
+                    model: Containers.engines
+
+                    delegate: StyledRect {
+                        id: enginePill
+
+                        required property string modelData
+                        readonly property bool active: Containers.activeEngine === modelData
+
+                        implicitWidth: engineLabel.implicitWidth + Tokens.padding.medium * 2
+                        implicitHeight: engineLabel.implicitHeight + Tokens.padding.extraSmall * 2
+                        radius: Tokens.rounding.full
+                        color: enginePill.active ? Colours.palette.m3primary : Colours.tPalette.m3surfaceContainerHigh
+
+                        StyledText {
+                            id: engineLabel
+
+                            anchors.centerIn: parent
+                            text: Containers.titleCase(enginePill.modelData)
+                            font: Tokens.font.body.builders.small.weight(Font.DemiBold).build()
+                            color: enginePill.active ? Colours.palette.m3onPrimary : Colours.palette.m3onSurfaceVariant
+                        }
+
+                        CustomMouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
+                            onClicked: Containers.setActiveEngine(enginePill.modelData)
+                        }
+                    }
                 }
             }
 
@@ -114,8 +152,8 @@ Item {
             }
 
             StyledText {
-                visible: Podman.lastUpdated !== null
-                text: Podman.lastUpdated !== null ? Tr.tr("Updated %1").arg(Podman.lastUpdated.toLocaleTimeString(Qt.locale(), Units.twelveHourClock ? "h:mm AP" : "HH:mm")) : ""
+                visible: Containers.lastUpdated !== null
+                text: Containers.lastUpdated !== null ? Tr.tr("Updated %1").arg(Containers.lastUpdated.toLocaleTimeString(Qt.locale(), Units.twelveHourClock ? "h:mm AP" : "HH:mm")) : ""
                 font: Tokens.font.body.small
                 color: Colours.palette.m3onSurfaceVariant
             }
@@ -123,8 +161,8 @@ Item {
 
         StyledText {
             Layout.fillWidth: true
-            visible: Podman.errorMessage.length > 0
-            text: Tr.tr("Could not list containers: %1").arg(Podman.errorMessage)
+            visible: Containers.errorMessage.length > 0
+            text: Tr.tr("Could not list containers: %1").arg(Containers.errorMessage)
             wrapMode: Text.WordWrap
             font: Tokens.font.body.small
             color: Colours.palette.m3error
@@ -132,8 +170,8 @@ Item {
 
         StyledText {
             Layout.fillWidth: true
-            visible: Podman.actionError.length > 0
-            text: Podman.actionError
+            visible: Containers.actionError.length > 0
+            text: Containers.actionError
             wrapMode: Text.WordWrap
             font: Tokens.font.body.small
             color: Colours.palette.m3error
@@ -162,19 +200,19 @@ Item {
 
                 SectionHeader {
                     text: Tr.tr("Running")
-                    count: Podman.running.length
+                    count: Containers.running.length
                 }
 
                 StyledText {
                     Layout.leftMargin: Tokens.padding.small
-                    visible: Podman.running.length === 0
+                    visible: Containers.running.length === 0
                     text: Tr.tr("No containers are running")
                     font: Tokens.font.body.small
                     color: Colours.palette.m3onSurfaceVariant
                 }
 
                 Repeater {
-                    model: Podman.running
+                    model: Containers.running
 
                     delegate: ContainerCard {
                         entry: modelData
@@ -184,19 +222,19 @@ Item {
                 SectionHeader {
                     Layout.topMargin: Tokens.spacing.medium
                     text: Tr.tr("Idle")
-                    count: Podman.idle.length
+                    count: Containers.idle.length
                 }
 
                 StyledText {
                     Layout.leftMargin: Tokens.padding.small
-                    visible: Podman.idle.length === 0
+                    visible: Containers.idle.length === 0
                     text: Tr.tr("No idle containers")
                     font: Tokens.font.body.small
                     color: Colours.palette.m3onSurfaceVariant
                 }
 
                 Repeater {
-                    model: Podman.idle
+                    model: Containers.idle
 
                     delegate: ContainerCard {
                         entry: modelData
@@ -325,7 +363,7 @@ Item {
                     implicitWidth: actionRow.implicitWidth + Tokens.padding.medium * 2
                     implicitHeight: actionRow.implicitHeight + Tokens.padding.extraSmall * 2
                     radius: Tokens.rounding.full
-                    opacity: Podman.actionRunning ? 0.5 : 1
+                    opacity: Containers.actionRunning ? 0.5 : 1
                     color: {
                         const c = card.entry.running ? Colours.palette.m3error : Colours.palette.m3primary;
                         return Qt.rgba(c.r, c.g, c.b, actionArea.containsMouse ? 0.22 : 0.12);
@@ -356,7 +394,7 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
-                        enabled: !Podman.actionRunning
+                        enabled: !Containers.actionRunning
                         onClicked: root.triggerAction(card.entry)
                     }
                 }
