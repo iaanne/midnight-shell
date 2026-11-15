@@ -33,7 +33,7 @@ class DashboardConfig : public settings::ObjectNode {
     CONFIG_PROPERTY(bool, showContainers, false)
     // Browser command used to open provider dashboards with a profile.
     // Empty means the system default browser is used without a profile.
-    CONFIG_PROPERTY(QString, providersBrowser, u""_s)
+    CONFIG_PROPERTY(QString, providersBrowser, QString())
     CONFIG_PROPERTY(bool, showHyprlandSplash, false)
     CONFIG_PROPERTY(bool, colorizeMediaGif, true)
     CONFIG_PROPERTY(bool, useMediaShapes, false)
